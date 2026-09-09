@@ -1,0 +1,2113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Happy Oyster — AI Scene Prompt Manager</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: #1a1a1c; color: #c8c8c8; min-height: 100vh; line-height: 1.5; }
+header { padding: 32px 40px 0; max-width: 1400px; margin: 0 auto; }
+h1 { font-size: 22px; font-weight: 500; color: #e0e0e0; letter-spacing: 0.5px; }
+h1 span { color: #7a8a7a; font-weight: 300; }
+.subtitle { font-size: 13px; color: #6a6a6a; margin-top: 6px; }
+
+/* Tabs */
+.tabs { display: flex; gap: 0; margin-top: 24px; border-bottom: 1px solid #2a2a2c; }
+.tab-btn { padding: 10px 24px; font-size: 13px; cursor: pointer; border: none; background: none; color: #666; border-bottom: 2px solid transparent; transition: all 0.2s; }
+.tab-btn:hover { color: #999; }
+.tab-btn.active { color: #a0c0a0; border-bottom-color: #5a7a5a; }
+
+.domain-bar { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+.domain-chip { padding: 8px 20px; border-radius: 6px; font-size: 13px; cursor: pointer; border: 1px solid #333; background: #222; color: #999; transition: all 0.2s; }
+.domain-chip:hover { border-color: #555; color: #ccc; }
+.domain-chip.active { background: #2a2f2a; border-color: #5a7a5a; color: #a0c0a0; }
+.controls { display: flex; gap: 16px; margin-top: 20px; align-items: center; flex-wrap: wrap; }
+.search-box { flex: 1; min-width: 240px; padding: 10px 16px; border-radius: 6px; border: 1px solid #333; background: #222; color: #ccc; font-size: 13px; outline: none; }
+.search-box:focus { border-color: #5a7a5a; }
+.search-box::placeholder { color: #555; }
+.actions { display: flex; gap: 10px; }
+.btn { padding: 8px 16px; border-radius: 6px; border: 1px solid #333; background: #222; color: #999; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+.btn:hover { border-color: #555; color: #ccc; }
+.btn.primary { background: #2a302a; border-color: #4a6a4a; color: #a0c0a0; }
+.btn.primary:hover { background: #334033; }
+main { max-width: 1400px; margin: 24px auto; padding: 0 40px 40px; }
+.stats { font-size: 12px; color: #555; margin-top: 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; margin-top: 20px; }
+.prompt-card { background: #222224; border: 1px solid #2a2a2c; border-radius: 8px; overflow: hidden; transition: all 0.2s; }
+.prompt-card:hover { border-color: #3a3a3c; }
+.card-header { padding: 16px 20px 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.style-badge { font-size: 11px; padding: 3px 10px; border-radius: 4px; font-weight: 500; white-space: nowrap; }
+.badge-1 { background: #2a2520; color: #b8956a; border: 1px solid #3a3025; }
+.badge-2 { background: #202228; color: #6a8ab8; border: 1px solid #25303a; }
+.badge-3 { background: #222025; color: #9570a0; border: 1px solid #302535; }
+.badge-4 { background: #222222; color: #8a8a8a; border: 1px solid #303030; }
+.badge-5 { background: #252220; color: #b8783a; border: 1px solid #352a20; }
+.badge-6 { background: #202225; color: #6a90a0; border: 1px solid #253035; }
+.badge-7 { background: #252220; color: #a07050; border: 1px solid #352a20; }
+.badge-8 { background: #222228; color: #8a8ab0; border: 1px solid #282835; }
+.badge-9 { background: #222520; color: #7a9060; border: 1px solid #2a3525; }
+.badge-10 { background: #202522; color: #6a9070; border: 1px solid #253028; }
+.badge-11 { background: #2a2228; color: #c08090; border: 1px solid #352830; }
+.badge-12 { background: #1e2525; color: #609080; border: 1px solid #253535; }
+.badge-13 { background: #252228; color: #9080b0; border: 1px solid #302835; }
+.badge-d1 { background: #2a2522; color: #c8a080; border: 1px solid #3a3028; }
+.badge-d2 { background: #252520; color: #a0a870; border: 1px solid #303025; }
+.badge-d3 { background: #252525; color: #8a8a8a; border: 1px solid #353535; }
+.badge-d4 { background: #222222; color: #707070; border: 1px solid #2a2a2a; }
+.badge-d5 { background: #222228; color: #8090a0; border: 1px solid #282830; }
+.badge-d6 { background: #282022; color: #c87070; border: 1px solid #352828; }
+.badge-d7 { background: #222528; color: #7090a0; border: 1px solid #283035; }
+.badge-d8 { background: #222225; color: #909090; border: 1px solid #303030; }
+.badge-d9 { background: #202020; color: #606060; border: 1px solid #252525; }
+.badge-d10 { background: #252218; color: #b8955a; border: 1px solid #353020; }
+/* Core aesthetics */
+.badge-c1 { background: #2a2028; color: #c090c0; border: 1px solid #352835; }
+.badge-c2 { background: #222825; color: #80b090; border: 1px solid #283528; }
+.badge-c3 { background: #1e2822; color: #90c0a0; border: 1px solid #253528; }
+.badge-c4 { background: #252528; color: #c0c0d8; border: 1px solid #303038; }
+.badge-c5 { background: #1e282a; color: #70c0d0; border: 1px solid #253538; }
+.badge-c6 { background: #1a222a; color: #6090c0; border: 1px solid #202a35; }
+.badge-c7 { background: #222228; color: #b0a0d0; border: 1px solid #2a2a35; }
+.badge-c8 { background: #1e252a; color: #7098b8; border: 1px solid #253035; }
+.badge-c9 { background: #252525; color: #909090; border: 1px solid #303030; }
+.badge-c10 { background: #2a2228; color: #c090a0; border: 1px solid #352830; }
+.badge-c11 { background: #2a1a1e; color: #c05050; border: 1px solid #352025; }
+.badge-c12 { background: #282018; color: #b87830; border: 1px solid #352a20; }
+.badge-c13 { background: #222224; color: #889098; border: 1px solid #2a2a30; }
+.badge-c14 { background: #1e2828; color: #80c0b0; border: 1px solid #253535; }
+.badge-c15 { background: #221e28; color: #a060c0; border: 1px solid #2a2535; }
+.badge-c16 { background: #252018; color: #a08050; border: 1px solid #302a20; }
+.badge-c17 { background: #1a202a; color: #4088d0; border: 1px solid #202835; }
+.badge-c18 { background: #251e28; color: #c050c0; border: 1px solid #302535; }
+.badge-c19 { background: #1e2820; color: #50b870; border: 1px solid #253528; }
+.badge-c20 { background: #1a1e28; color: #607898; border: 1px solid #202530; }
+.card-subtitle { font-size: 11px; color: #555; margin-top: 2px; }
+.card-body { padding: 0 20px 16px; }
+.prompt-text { font-size: 12px; color: #888; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; line-height: 1.6; max-height: 76px; word-break: break-word; }
+.card-footer { padding: 12px 20px; display: flex; gap: 8px; border-top: 1px solid #28282a; }
+.card-footer .btn { font-size: 11px; padding: 5px 12px; }
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 100; justify-content: center; align-items: center; }
+.modal-overlay.show { display: flex; }
+.modal { background: #1e1e20; border: 1px solid #333; border-radius: 10px; max-width: 700px; width: 90%; max-height: 85vh; overflow-y: auto; padding: 0; }
+.modal-header { padding: 20px 24px 16px; border-bottom: 1px solid #2a2a2c; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: #1e1e20; z-index: 1; }
+.modal-title { font-size: 15px; color: #d0d0d0; font-weight: 500; }
+.modal-close { background: none; border: none; color: #666; cursor: pointer; font-size: 20px; padding: 4px 8px; }
+.modal-close:hover { color: #999; }
+.modal-body { padding: 20px 24px; }
+.modal-prompt { font-size: 13px; color: #aaa; line-height: 1.7; white-space: pre-wrap; word-break: break-word; background: #1a1a1c; border: 1px solid #2a2a2c; border-radius: 6px; padding: 16px; font-family: inherit; }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #2a3a2a; color: #a0c0a0; padding: 10px 24px; border-radius: 6px; font-size: 13px; z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.3s; border: 1px solid #4a6a4a; }
+.toast.show { opacity: 1; }
+.empty { text-align: center; padding: 60px 20px; color: #444; }
+.empty p { margin-top: 8px; font-size: 13px; }
+
+/* Builder */
+#buildMode { display: none; }
+.build-section { margin-bottom: 24px; }
+.build-label { font-size: 12px; color: #6a8a6a; font-weight: 500; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+.select-wrap { position: relative; display: inline-block; }
+.build-select { padding: 10px 36px 10px 14px; border-radius: 6px; border: 1px solid #333; background: #222; color: #ccc; font-size: 13px; outline: none; appearance: none; cursor: pointer; min-width: 260px; }
+.build-select:focus { border-color: #5a7a5a; }
+.select-wrap::after { content: '▾'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #555; pointer-events: none; font-size: 11px; }
+.tag-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-chip { padding: 6px 14px; border-radius: 16px; font-size: 12px; cursor: pointer; border: 1px solid #333; background: #222; color: #888; transition: all 0.15s; user-select: none; }
+.tag-chip:hover { border-color: #555; color: #bbb; }
+.tag-chip.selected { background: #1e2e1e; border-color: #4a7a4a; color: #a0c0a0; }
+.tag-chip.multi {  }
+.prompt-preview { background: #1a1a1c; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-top: 8px; min-height: 80px; }
+.prompt-preview .text { font-size: 13px; color: #a0a0a0; line-height: 1.7; word-break: break-word; white-space: pre-wrap; }
+.prompt-preview .count { font-size: 11px; color: #555; margin-top: 10px; }
+.count.warn { color: #b8783a; }
+.build-actions { display: flex; gap: 10px; margin-top: 16px; }
+.style-info { font-size: 12px; color: #555; margin-top: 6px; font-style: italic; }
+.hint { font-size: 11px; color: #444; margin-top: 4px; }
+
+/* Research Dialog */
+.research-modal { max-width: 800px; }
+.domain-add-btn { border-style: dashed; border-color: #3a4a3a; color: #7a8a7a; }
+.domain-add-btn:hover { border-color: #5a7a5a; color: #a0c0a0; background: #1e261e !important; }
+.chip-del { display: inline-block; margin-left: 4px; opacity: 0.35; font-size: 11px; cursor: pointer; transition: opacity 0.15s; }
+.chip-del:hover { opacity: 1; color: #b87878; }
+.domain-chip.user-domain { padding-right: 6px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.form-field { margin-bottom: 16px; }
+.form-field label { display: block; font-size: 12px; color: #6a8a6a; font-weight: 500; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.form-field input, .form-field textarea, .form-field select {
+  width: 100%; padding: 10px 14px; border-radius: 6px; border: 1px solid #333;
+  background: #222; color: #ccc; font-size: 13px; outline: none; font-family: inherit;
+}
+.form-field input:focus, .form-field textarea:focus, .form-field select:focus { border-color: #5a7a5a; }
+.form-field input::placeholder, .form-field textarea::placeholder { color: #555; }
+.form-field textarea { min-height: 80px; resize: vertical; }
+.form-actions { display: flex; gap: 10px; margin-top: 12px; }
+.field-error { border-color: #7a3a3a !important; }
+.error-text { font-size: 11px; color: #b87878; margin-top: 4px; }
+.url-list { list-style: none; margin: 0; padding: 0; }
+.url-list li { margin-bottom: 8px; }
+.url-list a { color: #7a9a7a; font-size: 13px; text-decoration: none; word-break: break-all; }
+.url-list a:hover { color: #a0c0a0; text-decoration: underline; }
+.term-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.term-item { padding: 6px 12px; border-radius: 4px; background: #1a1a1c; border: 1px solid #2a2a2c; font-size: 12px; color: #999; cursor: pointer; user-select: all; transition: all 0.15s; }
+.term-item:hover { border-color: #555; color: #ccc; }
+.result-section { margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid #2a2a2c; }
+.result-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.vocab-category { margin-bottom: 10px; }
+.vocab-category strong { font-size: 12px; color: #6a8a6a; display: inline-block; min-width: 70px; vertical-align: top; padding-top: 6px; }
+.vocab-category .tag-row { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.vocab-chip { cursor: pointer; user-select: none; transition: all 0.15s; }
+.vocab-chip.selected { background: #2a3a2a; border-color: #5a7a5a; color: #a0c0a0; }
+.vocab-chip:not(.selected):hover { border-color: #555; }
+.search-result-item { margin-bottom: 8px; padding: 8px 10px; background: #151518; border-radius: 4px; border: 1px solid #1e1e22; }
+.search-result-link { color: #7a9a7a; font-size: 12px; text-decoration: none; display: block; margin-bottom: 2px; }
+.search-result-link:hover { color: #a0c0a0; text-decoration: underline; }
+.search-result-snippet { color: #555; font-size: 11px; display: block; line-height: 1.4; }
+/* Progress bar */
+.progress-wrap { margin-bottom: 16px; padding: 12px 16px; background: #1a1a1c; border-radius: 6px; border: 1px solid #2a2a2c; }
+.progress-bar-outer { height: 6px; background: #222; border-radius: 3px; overflow: hidden; margin: 8px 0; }
+.progress-bar-inner { height: 100%; background: linear-gradient(90deg, #3a5a3a, #5a8a5a); border-radius: 3px; transition: width 0.4s ease; width: 0%; }
+.progress-step { font-size: 12px; color: #888; }
+.progress-pct { font-size: 12px; color: #6a8a6a; float: right; }
+@media (max-width: 768px) { header, main { padding-left: 20px; padding-right: 20px; } .grid { grid-template-columns: 1fr; } .form-row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Happy Oyster <span>— AI Scene Prompt Manager</span></h1>
+  <p class="subtitle">Cross-domain keyframe prompt library for AI-generated spatial experiences
+    <a href="home.html" style="color:#6a8aaa;margin-left:16px;font-size:12px;text-decoration:none;border:1px solid rgba(255,255,255,0.12);padding:4px 12px;border-radius:12px;">← Home</a>
+    <span id="apiIndicator" style="margin-left:12px;font-size:11px;padding:4px 12px;border-radius:12px;border:1px solid rgba(255,82,82,0.3);background:rgba(255,82,82,0.08);color:#ff5252;">● API</span>
+  </p>
+  <div id="apiInputBar" style="margin-top:12px;padding:12px 16px;background:#222224;border:1px solid #2a2a2c;border-radius:8px;display:flex;align-items:center;gap:10px;">
+    <input id="apiKeyInput" type="password" placeholder="sk-xxxxxxxx" style="flex:1;padding:8px 12px;border-radius:6px;border:1px solid #333;background:#1a1a1c;color:#ccc;font-size:12px;font-family:monospace;outline:none;">
+    <button onclick="verifyAndSaveKey()" style="padding:8px 16px;border-radius:6px;border:1px solid #4a6a4a;background:#2a3a2a;color:#a0c0a0;cursor:pointer;font-size:12px;">Connect</button>
+    <span id="apiMsg" style="font-size:11px;min-width:100px;"></span>
+  </div>
+  <div class="domain-bar" id="domainBar">
+    <button class="domain-chip active" data-domain="architectural-walkthrough">建筑漫步</button>
+    <button class="domain-chip" data-domain="architectural-drawing-styles">建筑图纸风格化</button>
+    <button class="domain-chip" data-domain="visual-cores">视觉核类风格</button>
+    <button class="domain-chip domain-add-btn" id="addDomainBtn" title="Start New Domain Research">+ 新领域</button>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="browse" onclick="switchTab('browse')">Browse Prompts</button>
+    <button class="tab-btn" data-tab="build" onclick="switchTab('build')">Build Prompt</button>
+  </div>
+</header>
+
+<main>
+  <!-- BROWSE MODE -->
+  <div id="browseMode">
+    <div class="controls">
+      <input type="text" class="search-box" id="searchBox" placeholder="Filter prompts by style, keyword, or description...">
+      <div class="actions">
+        <button class="btn" id="expandAll">Expand All</button>
+        <button class="btn" id="collapseAll">Collapse All</button>
+      </div>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="grid" id="promptGrid"></div>
+  </div>
+
+  <!-- BUILD MODE -->
+  <div id="buildMode">
+    <div class="build-section">
+      <div class="build-label">1. Style Base</div>
+      <div class="select-wrap">
+        <select class="build-select" id="buildStyle" onchange="updateBuild()">
+          <option value="">— Select a style —</option>
+        </select>
+      </div>
+      <div class="style-info" id="styleInfo"></div>
+    </div>
+
+    <div class="build-section">
+      <div class="build-label">2. Scene Type <span class="hint">(select 1-2, defines the spatial typology)</span></div>
+      <div class="tag-row" id="sceneTags"></div>
+    </div>
+
+    <div class="build-section">
+      <div class="build-label">3. Material Keywords <span class="hint">(multi-select, adds material texture to prompt)</span></div>
+      <div class="tag-row" id="materialTags"></div>
+    </div>
+
+    <div class="build-section">
+      <div class="build-label">4. Lighting Strategy <span class="hint">(select one — defines light quality and direction)</span></div>
+      <div class="tag-row" id="lightingTags"></div>
+    </div>
+
+    <div class="build-section">
+      <div class="build-label">5. Atmosphere Tone <span class="hint">(select one — defines mood and emotional register)</span></div>
+      <div class="tag-row" id="atmosphereTags"></div>
+    </div>
+
+    <div class="build-section">
+      <div class="build-label">6. Quality Modifiers <span class="hint">(toggle on/off — appended to prompt)</span></div>
+      <div class="tag-row" id="modifierTags"></div>
+    </div>
+
+    <div class="build-section">
+      <div class="build-label">Generated Prompt</div>
+      <div class="prompt-preview">
+        <div class="text" id="buildPreview">Select a style and configure keywords above to build your prompt...</div>
+        <div class="count" id="buildCount"></div>
+      </div>
+      <div class="build-actions">
+        <button class="btn primary" onclick="copyBuildPrompt()">Copy to Clipboard</button>
+        <button class="btn" onclick="resetBuild()">Reset All</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">Prompt</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-prompt" id="modalPrompt"></div>
+      <div style="margin-top:16px;display:flex;gap:8px;">
+        <button class="btn primary" id="modalCopyBtn" onclick="copyModalPrompt()">Copy to Clipboard</button>
+        <button class="btn" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="researchOverlay">
+  <div class="modal research-modal">
+    <div class="modal-header">
+      <span class="modal-title">New Theme Research</span>
+      <button class="modal-close" onclick="closeResearchDialog()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="research-form-section">
+        <div class="form-row">
+          <div class="form-field">
+            <label>Theme Keyword (Chinese) *</label>
+            <input id="researchNameCn" placeholder="例如：游乐园">
+          </div>
+          <div class="form-field">
+            <label>Theme Keyword (English) *</label>
+            <input id="researchNameEn" placeholder="e.g. Amusement Park">
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Scene Description *</label>
+          <textarea id="researchDesc" placeholder="Describe the scene: what, where, when, who, mood...&#10;&#10;例如：小孩在游乐园玩耍，黄昏时分，复古游乐园，旋转木马和摩天轮，暖黄色调，胶片质感..."></textarea>
+          <div class="hint">Be vivid and specific — this drives vocabulary discovery and prompt generation.</div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Aspect Ratio</label>
+            <select id="researchAr">
+              <option value="16:9">16:9 — Horizontal / Landscape</option>
+              <option value="3:2">3:2 — Photography Standard</option>
+              <option value="1:1">1:1 — Square</option>
+              <option value="9:16">9:16 — Vertical / Portrait</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Generation Model</label>
+            <select id="researchModel">
+              <option value="nano-banana-pro">Nano Banana Pro</option>
+              <option value="gpt-image-2">GPT Image 2</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn primary" id="generateBriefBtn">Quick Draft</button>
+          <button class="btn" id="aiResearchBtn" style="background:#2a3a2a;color:#a0c0a0;border-color:#3a5a3a;">AI Research</button>
+          <button class="btn" id="resetResearchBtn">Reset</button>
+        </div>
+        <div id="aiResearchStatus" style="margin-top:8px;font-size:12px;color:#6a8a6a;display:none;"></div>
+      </div>
+
+      <div id="researchResults" style="display:none;">
+        <div class="progress-wrap" id="progressWrap">
+          <div><span class="progress-step" id="progressStep">Initializing...</span><span class="progress-pct" id="progressPct">0%</span></div>
+          <div class="progress-bar-outer"><div class="progress-bar-inner" id="progressBar"></div></div>
+        </div>
+        <div id="pathIndicator" style="margin-bottom:16px;padding:12px 16px;background:#1a1a1c;border-radius:6px;border:1px solid #2a2a2c;font-size:13px;line-height:1.6;"></div>
+        <div id="directionGroups"></div>
+        <div class="build-actions" style="margin-top:16px;">
+          <button class="btn primary" id="addToDomainsBtn">Add to My Domains</button>
+          <button class="btn" id="copyAllPromptsBtn">Copy All Prompts</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Copied to clipboard</div>
+
+<script>
+// ===== PROMPT DATA (Browse Mode) =====
+let domains = [
+  {
+    id: 'architectural-walkthrough',
+    name: '建筑漫步',
+    nameEn: 'Architectural Walkthrough',
+    styles: [
+      {
+        id: 1, name: 'Brutalism 粗野主义', badgeClass: 'badge-1',
+        prompts: [
+          { id: '1-A', label: 'Hero Shot: Concrete Hall', text: 'Horizontal interior photo, 16:9. Vast brutalist hall, monumental board-formed beton brut walls with form tie hole grid, deep recessed windows. A single narrow daylight beam cuts diagonally through a high slit, dramatic chiaroscuro, sharp shadows in deep corners. Warm gray concrete with wood grain imprint, cave sanctuary. Solemn, contemplative, monumental shelter. Muted warm gray, deep charcoal. --ar 16:9 --style raw' },
+          { id: '1-B', label: 'Atrium Staircase', text: 'Horizontal interior photo, 16:9. Sculptural concrete staircase in brutalist atrium, cantilevered treads emerging from board-formed wall, geometric solid and void. Form tie marks, wood grain texture. A single figure at top landing, dwarfed by monumental mass. Zenithal light, hard diagonal shadows, chiaroscuro. Ascensional, quiet power. Desaturated warm grays, deep charcoal. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 2, name: 'Bauhaus 包豪斯', badgeClass: 'badge-2',
+        prompts: [
+          { id: '2-A', label: 'Hero Shot: Flowing Lobby', text: 'Horizontal interior photo, 16:9. Luminous Bauhaus lobby, intersecting geometric volumes, cruciform chrome columns dividing space. Barcelona chair on honed travertine. Mondrian accent wall with desaturated primary blocks - muted brick red, dusty blue, ochre yellow - never vivid. Cantilevered mezzanine. Uniform diffused daylight from ribbon windows. Rational, serene, orderly clarity. Desaturated white, travertine beige, chrome silver. --ar 16:9 --style raw' },
+          { id: '2-B', label: 'Workshop Atelier', text: 'Horizontal interior photo, 16:9. Bauhaus workshop atelier, vast industrial steel-framed windows, cantilevered birch workbenches in row. Breuer tubular steel chairs with canvas sling, exposed radiator pipes muted red. Dark linoleum floor, white matte walls. Half-finished geometric maquette on central table, drafting tools. North-facing diffused daylight, even and shadowless. Craft and industry unified, ordered creativity, Werkstatt spirit. Desaturated white, birch wood, steel gray, muted red. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 3, name: 'Deconstructivism 解构主义', badgeClass: 'badge-3',
+        prompts: [
+          { id: '3-A', label: 'Hero Shot: Folded Hall', text: 'Horizontal interior photo, 16:9. Deconstructivist public interior, intersecting diagonal planes, walls tilting, floor folding into ceiling. Fractured angular skylights, multi-directional light beams. Zero right angles, every surface challenges gravity. A single figure dwarfed by spatial dislocation. Matte white plaster, raw steel plates, polished concrete. Fragmented daylight from competing openings, complex shadows. Dynamic, controlled chaos. Muted whites, steel grays, charcoal. --ar 16:9 --style raw' },
+          { id: '3-B', label: 'Metal Curved Corridor', text: 'Horizontal interior photo, 16:9. Flowing deconstructivist corridor, warped metal panels folding like liquid origami, seamless wall-to-ceiling, unpredictable compression and release. Titanium-zinc surfaces catch subtle light gradients. A void glimpsed at far end. Matte titanium-zinc with grain, raw steel ribs, dark concrete floor. Soft light washing across curved metal, form revealed through tonal variation. Futuristic, sculptural. Desaturated cool metallics, deep grays. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 4, name: 'Minimalism 极简主义', badgeClass: 'badge-4',
+        prompts: [
+          { id: '4-A', label: 'Hero Shot: White Hall', text: 'Horizontal interior photo, 16:9. Minimalist public gallery, soaring white hand-troweled plaster walls, a single narrow horizontal window framing a slice of sky. Pale polished concrete floor, seamless. One thin light oak bench - the only object. A shaft of afternoon light slides down the wall, revealing subtle plaster undulations. Negative space as primary volume. Pure matte white plaster, pale concrete, light oak. Absolute serenity, contemplative silence. Desaturated whites, warm grays. --ar 16:9 --style raw' },
+          { id: '4-B', label: 'Meditation Space', text: 'Horizontal interior photo, 16:9. Minimalist meditation hall, still water pool mirroring the concrete ceiling, a circular oculus casting a perfect ring of light onto water. Smooth fair-faced concrete walls warm gray, no ornament. Hairline gap between wall and floor, razor-thin line of light making concrete appear to float. Zenithal light through oculus, gentle gradation. Meditative, timeless, profoundly quiet. Desaturated warm grays, deep water blacks. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 5, name: 'Metabolism 新陈代谢派', badgeClass: 'badge-5',
+        prompts: [
+          { id: '5-A', label: 'Hero Shot: Capsule Atrium', text: 'Horizontal interior photo, 16:9. Soaring metabolist atrium, concrete megastructure cores like urban trees, prefabricated capsule modules plugged in at various heights, suspended catwalks. Each capsule with round porthole glowing muted amber. Precast concrete, steel nodes, galvanized grating. Daylight from clerestory filtering through structural frame, amber glow restrained - warm but never vivid. Futuristic yet human, metabolic poetry. Desaturated warm grays, muted metallics, soft amber. --ar 16:9 --style raw' },
+          { id: '5-B', label: 'Unit Passage', text: 'Horizontal interior photo, 16:9. Suspended metabolist corridor connecting capsule clusters, exposed pipes and bracing - arteries of megastructure. Capsule doors line one side, round portholes aglow. Through gaps, distant capsule clusters float. A figure walks the catwalk. Exposed steel framework, concrete core, visible pipework, perforated metal flooring. Overhead light through structure, warm light from capsule doors. Lived-in futurism, urban organism. Desaturated grays, muted amber. --ar 16:9 --style raw' },
+          { id: '5-C', label: 'Capsule Unit Interior', text: 'Horizontal interior photo, 16:9. Intimate metabolist capsule interior, built-in furnishings integrated into curved molded shell. Round porthole framing the megastructure beyond. Fold-down desk, recessed shelving, circular bed nook. Muted amber reading light on tatami floor. Molded fiberglass shell off-white matte, plywood cabinetry, brushed stainless, exposed bolt heads. Warm task light, soft daylight through porthole. Cozy, cybernetic refuge. Desaturated warm wood, off-white, soft amber. --ar 16:9 --style raw' },
+          { id: '5-D', label: 'Megastructure Skybridge', text: 'Horizontal interior photo, 16:9. Floating skybridge between two megastructure cores, 40 meters high, in transparent geodesic framework. Capsule insertion points, communal niches, circulation nodes. Through glass, metabolic towers fade into morning fog. Exposed steel geodesic framework, glass panels, board-formed concrete cores, perforated aluminum walkway. Soft fog-diffused light, layered depth, geodesic shadows. Utopian, sublime, city in the sky. Desaturated cool grays, mist whites, distant amber pinpoints. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 6, name: 'High-Tech 高技派', badgeClass: 'badge-6',
+        prompts: [
+          { id: '6-A', label: 'Hero Shot: Structural Hall', text: 'Horizontal interior photo, 16:9. Vast column-free high-tech hall, every structural member and duct exposed. Steel truss ceiling with diagonal cross-bracing. Color-coded services deeply muted - dusty blue air, olive green water, ochre yellow, rust red - never vivid. Polished concrete reflects structure above. Full-height glass walls. Natural light through structure, lattice shadows. Technological sublime, precise. Desaturated steel grays, aluminum silver, pale concrete. --ar 16:9 --style raw' },
+          { id: '6-B', label: 'Glass Corridor', text: 'Horizontal interior photo, 16:9. Glass-walled high-tech corridor in exposed steel framework, tension cables visible through glass floor and walls. Bridges between structural cores, city visible through diagrid exoskeleton. Exposed mechanical systems overhead in organized bands, color-coded. Glass floor panels, steel tension rods, aluminum ductwork, brushed steel handrail. Diffused daylight through exoskeleton, layered shadows. Suspended, weightless, precise. Desaturated grays, silvers. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 7, name: 'Critical Regionalism 地域主义', badgeClass: 'badge-7',
+        prompts: [
+          { id: '7-A', label: 'Hero Shot: Stone Hall', text: 'Horizontal interior photo, 16:9. Public hall of locally quarried stone, rough-cut blocks in rhythmic coursing, chisel marks and natural fissures. Narrow gap between wall and ceiling, sliver of sky light. Stone floor worn smooth, framed view of landscape beyond. Quarried stone rough split face walls, honed smooth floor, timber beams matte oiled. Daylight bouncing off stone, warm indirect glow. Grounded, timeless, belonging. Earth palette deeply desaturated - muted stone gray, dusty ochre, subdued umber. --ar 16:9 --style raw' },
+          { id: '7-B', label: 'Courtyard Threshold', text: 'Horizontal interior photo, 16:9. Threshold between interior and courtyard, rammed earth walls with visible geological strata, terracotta and ochre bands. Timber beam ceiling filtering dappled light onto powdery earth. Opening frames wild garden beyond. Rammed earth terracotta to pale ochre, matte texture, reclaimed beams weathered silver-gray, stone floor. Dappled light through pergola, moving shadows on earth. Warm, sheltering, ancestral. Earth tones deeply muted - never vivid, grounded palette. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 8, name: 'Parametricism 参数化主义', badgeClass: 'badge-8',
+        prompts: [
+          { id: '8-A', label: 'Hero Shot: Fluid Atrium', text: 'Horizontal interior photo, 16:9. Parametric atrium, Zaha Hadid fluid topology, continuous seamless surfaces where walls become floor become ceiling with no edges. Digital morphogenesis from single organic mass, gentle undulations. A figure dwarfed by flowing scale. Matte white GRC surface with eggshell texture. Soft ambient light across algorithmic curves, form revealed through tonal gradients. Futuristic, fluid serenity. Desaturated whites, pale warm grays, near monochrome. --ar 16:9 --style raw' },
+          { id: '8-B', label: 'Parametric Ceiling', text: 'Horizontal interior photo, 16:9. Gallery defined by algorithmic ceiling, interwoven parametric ribs varying in density and direction, lace-like digital canopy filtering light in moire patterns. Floor receives projection as living shadow carpet. Walls simple matte plaster, neutral canvas. Matte white ribs, smooth plaster walls, dark concrete floor. Light filtered through canopy, moire of light and shadow. Algorithmic beauty, mathematically sublime. Desaturated whites to deep grays. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 9, name: 'Japanese Zen 日本禅意', badgeClass: 'badge-9',
+        prompts: [
+          { id: '9-A', label: 'Hero Shot: Zen Corridor', text: 'Horizontal interior photo, 16:9. Zen corridor, one side open to karesansui raked gravel garden through knee-height opening, other side vertical hinoki cypress slats filtering light into parallel lines. Dark wood floor with wabi-sabi patina. Leaf shadows on wood. Hinoki slats matte oiled, dark wood, shoji panels, raked gravel. Soft light through slats, parallel shadows, indirect shoji glow. Seijaku (tranquility), wabi-sabi, meditative silence. Desaturated warm wood, shoji cream, gravel gray, charcoal. --ar 16:9 --style raw' },
+          { id: '9-B', label: 'Tea Pavilion', text: 'Horizontal interior photo, 16:9. Modern tea pavilion, smooth concrete walls warm gray, low cedar ceiling of interlocking beams, tokonoma alcove with scroll and ikebana. Light from hidden low window across tatami, dust motes in still air - yugen made visible. Concrete warm gray, dark cedar ceiling, tatami, tea bowl, washi paper. Low raking light revealing texture, soft upward bounce. Yugen, stillness, time suspended. Desaturated warm grays, cedar browns, rice straw gold, charcoal. --ar 16:9 --style raw' },
+          { id: '9-C', label: 'Reflecting Platform', text: 'Horizontal interior photo, 16:9. Zen meditation space, dark timber floor extending over still reflecting pool, boundary between interior and water imperceptible. Mist rising from water. Far wall open to moss garden, framed like living scroll. Shizen - naturalness as architecture. Dark timber over water, concrete charcoal gray. Overcast light from garden, water reflections on ceiling. Sublime stillness, dissolving boundary between built and natural. Desaturated grays, water blacks, moss greens, mist whites. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 10, name: 'Sustainable 可持续建筑', badgeClass: 'badge-10',
+        prompts: [
+          { id: '10-A', label: 'Hero Shot: Biophilic Atrium', text: 'Horizontal interior photo, 16:9. Biophilic atrium, vertical living green walls with native ferns and moss, bamboo structural columns rising through the space. Recycled timber slat ceiling filtering dappled daylight. Natural ventilation chimneys drawing air upward. Bamboo columns natural grain matte, living green walls, recycled timber, clay tile floor. Dappled light through timber slats, green-tinted diffuse glow. Hopeful, regenerative, alive. Desaturated sage greens, bamboo gold, earth browns. --ar 16:9 --style raw' },
+          { id: '10-B', label: 'Earth-Sheltered Hall', text: 'Horizontal interior photo, 16:9. Earth-sheltered public hall, rammed earth walls with visible strata in warm clay and ochre. Living green roof visible through clerestory windows, blurring inside and outside. Solar chimney towers drawing passive ventilation. Rammed earth strata matte texture, reclaimed timber columns, clay tile floor. Soft daylight through clerestory, green roof edge glow. Grounded, regenerative, harmonious. Desaturated clay ochre, sage green, timber gray. --ar 16:9 --style raw' },
+          { id: '10-C', label: 'Bamboo Pavilion', text: 'Horizontal interior photo, 16:9. Bamboo pavilion interior, woven bamboo columns branching into vaulted canopy, filtered daylight through living green roof. Cross ventilation through low openings. Recycled timber deck extends to water pond beyond open sides. Woven bamboo golden grain matte, living roof canopy, recycled timber decking. Dappled light through bamboo and green roof, soft swayed shadows. Hopeful, serene, symbiotic. Desaturated bamboo gold, sage green, timber gray. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 11, name: 'Postmodernism 后现代主义', badgeClass: 'badge-11',
+        prompts: [
+          { id: '11-A', label: 'Hero Shot: Postmodern Atrium', text: 'Horizontal interior photo, 16:9. Postmodern atrium, monumental pediment levitating mid-air, classical column halved with upper part suspended without load. Terrazzo floor in pastel geometric blocks dusty rose mint cream. Brass tracing fractured architrave. Classical quotation meets pop art. Coffered ceiling trompe l\'oeil. Warm cove light. Witty, theatrical, intellectually playful. Desaturated pastels, brass, terrazzo. --ar 16:9 --style raw' },
+          { id: '11-B', label: 'Memphis Gallery', text: 'Horizontal interior photo, 16:9. Postmodern public gallery, Memphis Group geometry, oversized arch with keystone detached. Colored marble panels dusty teal terracotta cream in rhythmic grid, polished brass inlay. Black and white checker floor. Neon tracing arch perimeter muted dusty pink. Mirrored wall fragmenting space. Staircase balustrade in Memphis squiggles. Indirect warm light. Knowing, ironic, complex. Desaturated jewel tones, brass, marble. --ar 16:9 --style raw' },
+          { id: '11-C', label: 'Pastiche Stairwell', text: 'Horizontal interior photo, 16:9. Postmodern stairwell, classical column fragments embedded diagonally in wall as decoration not structure. Brass handrail shaped as Greek key. Pastel pink wall meeting mint ceiling. Trompe l\'oeil window painted on solid wall. Terrazzo steps in confetti aggregate muted multicolor. Neon sign glowing softly above. Pop culture meets archaeology. Soft theatrical lighting. Playful, smart, provocative. Desaturated pastels, brass, terrazzo, muted neon. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 12, name: 'Art Deco 装饰艺术', badgeClass: 'badge-12',
+        prompts: [
+          { id: '12-A', label: 'Hero Shot: Grand Hall', text: 'Horizontal interior photo, 16:9. Art Deco grand hall, monumental symmetrical staircase, polished brass handrails, chevron-patterned marble floor in cream and black. Soaring ceiling with sunburst motif in gold leaf matte. Tiered chandeliers in frosted glass and chrome. Full-height mirrors flanking the hall amplifying light and space. Travertine walls with fluted detailing. Warm diffused light. Opulent, ordered, timeless glamour. Desaturated jewel tones, cream, brass, black. --ar 16:9 --style raw' },
+          { id: '12-B', label: 'Ballroom', text: 'Horizontal interior photo, 16:9. Art Deco ballroom, ceiling with concentric geometric rings and central sunburst in muted gold. Herringbone wood floor with high-gloss lacquer. Chrome sconces flanking large arched mirrors. Velvet drapes in dusty sapphire. Stepped ziggurat moldings along walls. Frosted glass panels diffusing soft light. Streamlined, rhythmic, sophisticated. Desaturated sapphire, cream, chrome, muted gold. --ar 16:9 --style raw' },
+          { id: '12-C', label: 'Elevator Lobby', text: 'Horizontal interior photo, 16:9. Art Deco elevator lobby, green marble walls with black inlay chevrons, polished chrome elevator doors with etched geometric fan pattern. Terrazzo floor in bold geometric design, deep emerald and ivory. Cove lighting with warm amber glow, mirrored ceiling reflecting pattern below. A figure waiting, dwarfed by monumental symmetry. Luxurious, precise, machine age romance. Desaturated emerald, ivory, chrome, black. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 13, name: 'Expressionism 表现主义', badgeClass: 'badge-13',
+        prompts: [
+          { id: '13-A', label: 'Hero Shot: Poelzig Hall', text: 'Horizontal interior photo, 16:9. Expressionist hall after Hans Poelzig Grosses Schauspielhaus, vast cavernous ceiling with thousands of stalactite plaster pendants in warm amber-gray. Rudolf Steiner Goetheanum-like organic sculptural columns merging into ceiling with no distinction. Deep amethyst glass block wall casting colored light. Polished dark stone floor reflecting the grotto above. Theatrical chiaroscuro, spiritual cave sanctuary, Gesamtkunstwerk. Desaturated ambers, warm gray, deep umber. --ar 16:9 --style raw' },
+          { id: '13-B', label: 'Taut Corridor', text: 'Horizontal interior photo, 16:9. Expressionist corridor after Bruno Taut Glass Pavilion, faceted colored glass walls in moody blue and green, prismatic light fracturing through crystalline geometry. Ceiling warped in organic folds like Mendelsohn Einstein Tower interior. Amber glass niches emitting soft warm glow. Sequential compression and release along path, sacred grotto atmosphere. Theatrical chiaroscuro, deep shadows. Spiritual, immersive, primordial. Desaturated moody blues, deep ambers, warm earth. --ar 16:9 --style raw' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'architectural-drawing-styles',
+    name: '建筑图纸风格化',
+    nameEn: 'Architectural Drawing Styles',
+    styles: [
+      {
+        id: 1, name: 'Post-Digital Collage 后数字拼贴风', badgeClass: 'badge-d1',
+        prompts: [
+          { id: 'D1-A', label: 'Hero Shot: Collage Facade', text: 'Architectural post-digital collage, horizontal 16:9. Brutalist concrete building facade, 3D render base overlaid with grainy paper texture. Silhouette cutout figures at entrance, halftone dot pattern in sky area. Mixed media — photo grass texture below, sketch hatching overlay on shadows. Bold frontal composition. Raw competition board aesthetic, process-driven. Desaturated warm grays with muted teal color pop. --ar 16:9 --style raw' },
+          { id: 'D1-B', label: 'Atmosphere Collage', text: 'Architectural post-digital collage, horizontal 16:9. Brutalist interior atrium, raw concrete pillars. 3D base render with photomontage elements — cutout figures on mezzanine, textured paper sky visible through skylight. Gritty grain overlay, rough edges, visible masking lines. Hand-drawn annotation marks, circle highlight on key detail. Collage aesthetic — imperfect, narrative, competition-ready. Muted gray, warm paper tone, dusty ochre accent. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 2, name: 'Watercolor 水彩风', badgeClass: 'badge-d2',
+        prompts: [
+          { id: 'D2-A', label: 'Hero Shot: Watercolor Facade', text: 'Architectural watercolor rendering, horizontal 16:9. Brutalist concrete building, soft cerulean and burnt sienna washes bleeding at edges. Wet-on-wet technique, pigment granulation visible. White paper highlights where light hits the facade. Transparent layered glazes building depth in shadows. No hard lines, atmospheric diffusion. Brushstroke texture, water bloom edges. Artistic impression, warm and contemplative. Muted earth tones, pale cream paper base, soft blue sky wash. --ar 16:9 --style raw' },
+          { id: 'D2-B', label: 'Watercolor Interior', text: 'Architectural watercolor study, horizontal 16:9. Brutalist interior hall, monumental concrete columns dissolving into soft gray washes at edges. Warm ochre light bleeding through tall window. Transparent layering — raw umber shadows glazed over pale wash base. Visible brush marks, uneven pigment pooling, paper tooth texture. Atmospheric rather than precise, capturing spatial mood. Contemplative warmth, Steven Holl-inspired light study. Muted ochre, gray wash, cream paper. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 3, name: 'Hand Sketch 手绘草图风', badgeClass: 'badge-d3',
+        prompts: [
+          { id: 'D3-A', label: 'Hero Shot: Charcoal Sketch', text: 'Architectural hand sketch, horizontal 16:9. Brutalist concrete tower, bold gestural charcoal strokes capturing monumental mass. Vigorous hatching in shadow areas, loose construction lines still visible. White space left raw for highlights. Unfinished edges suggesting form rather than defining it. Design process aesthetic — as if the architect is still thinking through the volume. Graphite smudge texture, rough paper ground. Energetic, immediate, alive. Charcoal black, graphite gray, cream paper. --ar 16:9 --style raw' },
+          { id: 'D3-B', label: 'Ink Study', text: 'Architectural ink sketch, horizontal 16:9. Brutalist interior corridor, rapid pen strokes — varied line weight from fine to bold. Cross-hatching shadows in rhythmic bands. Perspective construction lines intentionally left visible. A single red pencil accent marking the entrance door. Uneven ink flow, blotted line ends, hand tremor authenticity. Gehry-esque energy meets Ando precision. Contemplative, process-revealing, personal. Black ink, graphite gray, muted red accent, cream paper. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 4, name: 'Line Art 黑白线稿风', badgeClass: 'badge-d4',
+        prompts: [
+          { id: 'D4-A', label: 'Hero Shot: Elevation Line Art', text: 'Architectural line art, horizontal 16:9. Brutalist building facade in pure black ink on bright white. Clean uniform stroke, no shading, no fill. Every form tie hole and board-form line precisely rendered. Thin red accent line tracing the roofline — single color only. Technical drawing precision with artistic restraint. Negative white space as primary visual element. Fine liner aesthetic, crisp orthographic clarity. Minimal, precise, intellectual. Black ink, bright white, one muted red line. --ar 16:9 --style raw' },
+          { id: 'D4-B', label: 'Axonometric Line Art', text: 'Architectural axonometric line art, horizontal 16:9. Brutalist building exploded in clean black ink lines at 45-degree isometric projection. Every floor plate, column, and wall rendered with uniform fine stroke. No rendering, no shadow, no hatching. Selective cyan accent on structural elements only. Diagrammatic precision — form logic revealed through line alone. White background, crisp vector aesthetic. Analytical, elegant, architectural clarity. Black ink, white ground, muted cyan accent. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 5, name: 'Atmospheric Narrative 氛围叙事风', badgeClass: 'badge-d5',
+        prompts: [
+          { id: 'D5-A', label: 'Hero Shot: Fog and Light', text: 'Architectural atmospheric rendering, horizontal 16:9. Brutalist concrete tower emerging from dense morning fog. Volumetric god rays piercing through mist, illuminating the raw concrete texture. A solitary figure with umbrella walking toward entrance. Fog layers creating depth — near crisp, far dissolved. Golden hour light warm but diffused, casting long soft shadows. Emotional, sublime, narrative-driven. Architecture as experience rather than object. Deeply desaturated grays, mist white, muted warm amber. --ar 16:9 --style raw' },
+          { id: 'D5-B', label: 'Dusk Rain', text: 'Architectural atmospheric rendering, horizontal 16:9. Brutalist public plaza at dusk, rain-streaked concrete reflecting warm interior light from windows. Dramatic storm sky in deep blue-gray transition. Puddles mirroring the building mass. Figures with umbrellas crossing the plaza — narrative of shelter and arrival. Cinematic depth of field, foreground sharp, distance softened. Lived-in, emotionally resonant, filmic. Desaturated cool grays, warm amber window glow, deep dusk blue. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 6, name: 'Flat Illustration 扁平插画风', badgeClass: 'badge-d6',
+        prompts: [
+          { id: 'D6-A', label: 'Hero Shot: Flat Facade', text: 'Architectural flat illustration, horizontal 16:9. Brutalist building facade reduced to clean geometric color blocks — dusty coral walls, muted teal sky, warm sand ground. Thin uniform black outline defining every form. No gradients, no shadows, pure flat vector aesthetic. Cartoon-style figures with simple circle heads at entrance for scale. Graphic abstraction — building as bold visual statement. Playful yet precise, BIG-inspired clarity. Desaturated coral, teal, sand, pale mint accents. --ar 16:9 --style raw' },
+          { id: 'D6-B', label: 'Isometric Flat', text: 'Architectural flat isometric illustration, horizontal 16:9. Brutalist complex in 45-degree axonometric, clean solid fill shapes in muted ochre, dusty teal, and cream. Thin black outlines, zero gradients, crisp color separation. Stylized miniature trees as simple green circles. Tiny cartoon figures on walkways. Each building block a distinct flat color. Graphic novel aesthetic meets architectural precision. Playful, legible, charming. Desaturated ochre, teal, cream, sage green accents. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 7, name: 'Diagrammatic 图解分析风', badgeClass: 'badge-d7',
+        prompts: [
+          { id: 'D7-A', label: 'Hero Shot: Exploded Axonometric', text: 'Architectural diagrammatic drawing, horizontal 16:9. Brutalist building in exploded axonometric — floor plates, structure, envelope, and program zones separated vertically with dashed leader lines. Color-coded: muted red for circulation, dusty cyan for structure, warm gray for envelope, olive for landscape. Thin annotation arrows with minimal text labels. Clean white background, information graphic aesthetic. Analytical clarity, OMA-inspired conceptual precision. Muted signal colors on white ground. --ar 16:9 --style raw' },
+          { id: 'D7-B', label: 'Program Zoning', text: 'Architectural diagrammatic drawing, horizontal 16:9. Brutalist complex program zoning — planometric cutaway at eye level. Color blocks mapping functions: muted ochre for public zones, dusty teal for services, warm gray for circulation cores. Dashed boundary lines, flow arrows showing movement patterns. Minimal legend in corner. Clean white ground, no rendering, pure information design. Architecture as readable system, BIG-inspired clarity. Muted earth tones, signal accents on white. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 8, name: 'White Model 白模风', badgeClass: 'badge-d8',
+        prompts: [
+          { id: 'D8-A', label: 'Hero Shot: White Model Building', text: 'Architectural white model photograph, horizontal 16:9. Brutalist building as matte white foam board model, no texture, no color. Precision-cut layers showing board-form imprint as fine engraved lines. Soft studio lighting from left — warm gray shadow casting the geometry into relief. Seamless white background. A tiny black scale figure at entrance revealing monumentality. Clean cuts, no glue marks. Physical model aesthetic, competition presentation. Pure matte white, subtle warm gray shadow, pale cream base. --ar 16:9 --style raw' },
+          { id: 'D8-B', label: 'Model Close-Up', text: 'Architectural white model detail, horizontal 16:9. Close-up of matte white foam board model — brutalist facade with rhythmic window recesses. Razor-clean cuts, each layer precisely stacked. Soft directional light raking across the surface, revealing every geometric articulation through shadow alone. Chipboard base visible at bottom edge. Depth of field blurring background, focus on the craftsmanship of the model itself. Sculptural, tactile, pure. Matte white, warm gray shadow, chipboard cream. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 9, name: 'Dark Moody 暗黑竞赛风', badgeClass: 'badge-d9',
+        prompts: [
+          { id: 'D9-A', label: 'Hero Shot: Night Noir', text: 'Architectural dark moody rendering, horizontal 16:9. Brutalist concrete building at night, single dramatic spotlight from below casting long upward shadows. Deep charcoal blacks swallowing the structure edges. Warm amber glow from one window — the only color. Fog rolling at ground level diffusing the light. Film noir atmosphere, theatrical, mysterious. Architecture as monumental dark presence. Cinematic composition, low-key photography aesthetic. Cool charcoal, midnight blue-black, single amber light source. --ar 16:9 --style raw' },
+          { id: 'D9-B', label: 'Cinematic Interior', text: 'Architectural dark cinematic rendering, horizontal 16:9. Brutalist interior corridor at night, a single bare bulb at far end casting harsh chiaroscuro. Concrete walls disappearing into absolute blackness at edges. Beam of light cutting diagonally across the space, revealing board-form texture in sharp relief. Fog haze visible in the light beam. A lone figure silhouetted at the threshold. Noir, suspenseful, sublime darkness. Deep charcoal, absolute black, selective warm light band. --ar 16:9 --style raw' }
+        ]
+      },
+      {
+        id: 10, name: 'Vintage Film 复古胶片风', badgeClass: 'badge-d10',
+        prompts: [
+          { id: 'D10-A', label: 'Hero Shot: 35mm Film', text: 'Architectural vintage film photograph, horizontal 16:9. Brutalist concrete building shot on 35mm Portra 400. Visible film grain, warm amber color cast, slight vignette darkening corners. Soft focus at edges, light leak blooming at top left. Mid-century documentary aesthetic — as if discovered in an architectural archive. Warm afternoon light, long shadows. Nostalgic, timeless, worn beauty. Warm amber, faded ochre, cream highlights, subtle green shadow shift. --ar 16:9 --style raw' },
+          { id: 'D10-B', label: 'Archival Interior', text: 'Architectural vintage film photograph, horizontal 16:9. Brutalist interior hall shot on Kodachrome 64. Characteristic warm-to-cool split tones — amber warmth in highlights, slight cyan shift in deep shadows. Heavy film grain visible in midtones. Soft vintage focus, slight chemical staining at edges. 1970s institutional atmosphere — quiet, dignified, slightly decayed. Sunlight shaft through high window catching dust motes. Nostalgic, haunting, beautifully imperfect. Amber, muted brown, cyan shadow, cream. --ar 16:9 --style raw' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'visual-cores',
+    name: '视觉核类风格',
+    nameEn: 'Visual Core Aesthetics',
+    styles: [
+      // 🟨 梦幻超现实
+      { id: 1, name: 'Dreamcore 梦核', badgeClass: 'badge-c1',
+        prompts: [{ id: 'C1-A', label: 'Childhood Dream', text: 'Horizontal photo, 16:9. Dreamcore aesthetic, hazy childhood memory scene, soft focus blur on suburban house with overgrown garden, vintage 90s VHS grain, warm nostalgic light leaking through sheer curtains, slightly unsettling comfort. Faded pastel colors, analog video artifacts, low resolution texture. --ar 16:9 --style raw' }]
+      },
+      { id: 2, name: 'Weirdcore 怪核', badgeClass: 'badge-c2',
+        prompts: [{ id: 'C2-A', label: 'Liminal Space', text: 'Horizontal photo, 16:9. Weirdcore liminal space, empty hotel corridor stretching infinitely with identical doors, low-res JPEG compression artifacts, nonsensical spatial logic, fluorescent light casting sickly green tint. Unsettling absence, uncanny valley architecture, MSPaint collage texture. --ar 16:9 --style raw' }]
+      },
+      { id: 3, name: 'Fairytalecore 童话核', badgeClass: 'badge-c3',
+        prompts: [{ id: 'C3-A', label: 'Enchanted Forest', text: 'Horizontal photo, 16:9. Fairytalecore enchanted forest clearing, giant glowing mushrooms in amber and soft lavender, vintage storybook illustration with visible paper texture and ink linework. Tiny woodland creatures, dewdrops on spider webs catching morning light. Soft pastel palette, gentle diffuse glow, nostalgic wonder. --ar 16:9 --style raw' }]
+      },
+      { id: 4, name: 'Angelcore 天使核', badgeClass: 'badge-c4',
+        prompts: [{ id: 'C4-A', label: 'Ethereal Light', text: 'Horizontal photo, 16:9. Angelcore ethereal scene, pure white feather wings dissolving into soft divine light rays, marble colonnade with flowing sheer fabric, doves in flight. Heavenly atmosphere, pristine white and pearl tones, gentle chiaroscuro, sacred geometry hints. Serene, transcendent, weightless. --ar 16:9 --style raw' }]
+      },
+      // 🟨 自然液态
+      { id: 5, name: 'Poolcore 池核', badgeClass: 'badge-c5',
+        prompts: [{ id: 'C5-A', label: '90s Pool', text: 'Horizontal photo, 16:9. Poolcore 1990s public swimming pool, turquoise water surface with caustic light patterns dancing on white tile walls, curved water slide with faded fiberglass texture, summer afternoon light through skylights. Nostalgic suburban leisure, slight film grain, chlorine blue and cream white. --ar 16:9 --style raw' }]
+      },
+      { id: 6, name: 'Aquacore 海洋核', badgeClass: 'badge-c6',
+        prompts: [{ id: 'C6-A', label: 'Deep Ocean', text: 'Horizontal photo, 16:9. Aquacore deep ocean scene, bioluminescent jellyfish drifting through navy blue water, vintage brass diving helmet glowing with internal amber light, bubbles rising through kelp forest. Ethereal underwater atmosphere, navy and teal with neon cyan accents, mysterious and weightless. --ar 16:9 --style raw' }]
+      },
+      { id: 7, name: 'Crystalcore 水晶核', badgeClass: 'badge-c7',
+        prompts: [{ id: 'C7-A', label: 'Crystal Prism', text: 'Horizontal photo, 16:9. Crystalcore scene, massive transparent quartz prisms emerging from dark mineral cave, rainbow light refraction casting spectral patterns on walls, liquid mercury pools reflecting crystal facets. Sharp geometric beauty, iridescent highlights, cool silver and prismatic white. --ar 16:9 --style raw' }]
+      },
+      { id: 8, name: 'Raincore 雨核', badgeClass: 'badge-c8',
+        prompts: [{ id: 'C8-A', label: 'Rainy Window', text: 'Horizontal photo, 16:9. Raincore aesthetic, rain-streaked window at night overlooking neon-lit city street, water droplets distorting orange and pink signs, wet asphalt reflecting traffic lights. Melancholic humidity, cozy isolation, film grain texture. Cool blue ambient with warm neon bokeh, nostalgic urban loneliness. --ar 16:9 --style raw' }]
+      },
+      // 🟨 暗黑极端
+      { id: 9, name: 'Ghostcore 鬼核', badgeClass: 'badge-c9',
+        prompts: [{ id: 'C9-A', label: 'Pale Haunt', text: 'Horizontal photo, 16:9. Ghostcore pale washed-out interior, vintage lace curtains barely moving in still air, tarnished silver mirror reflecting fog, dried flowers in milk glass vase. Low energy damp atmosphere, whitewashed and faded, barely-there presence. Muted ivory, dusty gray, cobweb silver. --ar 16:9 --style raw' }]
+      },
+      { id: 10, name: 'Traumacore 伤核', badgeClass: 'badge-c10',
+        prompts: [{ id: 'C10-A', label: 'Soft Wound', text: 'Horizontal photo, 16:9. Traumacore soft focus scene, gauze bandages draped over vintage medical cabinet, pastel pink pill bottles scattered on lace doily, faded plush toy with one eye missing. Fragile vulnerability aesthetic, gentle morning light through frosted window, nostalgic sadness. Muted rose, cream, pale lavender. --ar 16:9 --style raw' }]
+      },
+      { id: 11, name: 'Bloodcore 鲜血核', badgeClass: 'badge-c11',
+        prompts: [{ id: 'C11-A', label: 'Crimson Gothic', text: 'Horizontal photo, 16:9. Bloodcore dark romantic aesthetic, crimson silk fabric pooling on black marble floor, thorny rose stems wrapped around antique silver dagger, Baroque mirror reflecting candlelight. Gothic violent beauty, dramatic chiaroscuro, deep red and obsidian black, sensual darkness. --ar 16:9 --style raw' }]
+      },
+      { id: 12, name: 'Doomcore 末日核', badgeClass: 'badge-c12',
+        prompts: [{ id: 'C12-A', label: 'Wasteland', text: 'Horizontal photo, 16:9. Doomcore post-apocalyptic landscape, crumbling concrete overpass under toxic orange sky, radiation haze diffusing weak sunlight, survival gear and gas mask on weathered figure. Dust particles suspended in still air, rust and decay, muted amber and ash gray. Bleak survivalist beauty. --ar 16:9 --style raw' }]
+      },
+      // 🟨 工业机械
+      { id: 13, name: 'Industrialcore 工业核', badgeClass: 'badge-c13',
+        prompts: [{ id: 'C13-A', label: 'Metal Pipeline', text: 'Horizontal photo, 16:9. Industrialcore scene, cathedral-like hall of massive steel pipelines and pressure gauges, nuclear plant control room with vintage analog dials, steam vents hissing softly. Cold hard metal surfaces, riveted iron, industrial green paint peeling. Dim tungsten lighting, utilitarian beauty, Soviet-era heavy machinery. --ar 16:9 --style raw' }]
+      },
+      { id: 14, name: 'Labcore 实验室核', badgeClass: 'badge-c14',
+        prompts: [{ id: 'C14-A', label: 'Chemistry Lab', text: 'Horizontal photo, 16:9. Labcore sterile chemistry laboratory, rows of Erlenmeyer flasks with fluorescent green and blue reagents bubbling gently, vintage microscope with brass fittings, white tile walls under harsh fluorescent light. Scientific precision, cold clinical atmosphere, glass and chrome, eerie sterile green glow. --ar 16:9 --style raw' }]
+      },
+      { id: 15, name: 'Viruscore 病毒核', badgeClass: 'badge-c15',
+        prompts: [{ id: 'C15-A', label: 'Cellular Bio', text: 'Horizontal photo, 16:9. Viruscore biotech aesthetic, microscopic cellular structures rendered as glowing neon organisms, fluorescent protein markers in cyan and magenta against dark membrane background. Scientific beauty, synthetic biology, electron microscope false-color palette. Alien yet familiar, the sublime horror of the microscopic. --ar 16:9 --style raw' }]
+      },
+      { id: 16, name: 'Dirtycore 脏核', badgeClass: 'badge-c16',
+        prompts: [{ id: 'C16-A', label: 'Grimy Texture', text: 'Horizontal photo, 16:9. Dirtycore aesthetic, pile of worn-out denim jackets and faded band tees on cracked concrete floor, cigarette burns and oil stains, torn fishnet stockings draped over rusty chair. Gritty texture, grunge authenticity, dust motes in afternoon light, muted earth browns and washed-out black. --ar 16:9 --style raw' }]
+      },
+      // 🟨 科技数字
+      { id: 17, name: 'Cybercore 赛博核', badgeClass: 'badge-c17',
+        prompts: [{ id: 'C17-A', label: 'Neon Implant', text: 'Horizontal photo, 16:9. Cybercore aesthetic, close-up of chrome cybernetic hand implant with exposed circuits and neon blue fiber optics, rain-slicked skin reflecting pink and cyan holographic advertisements. High-tech low-life, chrome and flesh fusion, cyberpunk street level. Deep black background with electric neon accents, transhumanist beauty. --ar 16:9 --style raw' }]
+      },
+      { id: 18, name: 'Glitchcore 故障核', badgeClass: 'badge-c18',
+        prompts: [{ id: 'C18-A', label: 'Data Corruption', text: 'Horizontal photo, 16:9. Glitchcore digital corruption, portrait fractured by RGB channel displacement, horizontal scan lines slicing through the image, compression artifacts blooming like digital flowers. Corrupted data made beautiful, pixels melting into color noise, early 2000s datamosh aesthetic. Electric magenta, cyan shift, corrupted white. --ar 16:9 --style raw' }]
+      },
+      { id: 19, name: 'Digitalcore 数码核', badgeClass: 'badge-c19',
+        prompts: [{ id: 'C19-A', label: 'Y2K Desktop', text: 'Horizontal photo, 16:9. Digitalcore Y2K aesthetic, Windows 98 desktop with cascading pop-up windows, pixel art cursor trail, 3D pipe screensaver morphing in background, low-poly geocities-era graphics. Early internet nostalgia, pixel font UI elements, CRT monitor scanlines. Saturated cyan, magenta, and lime green on dark gray. --ar 16:9 --style raw' }]
+      },
+      { id: 20, name: 'Spacecore 太空核', badgeClass: 'badge-c20',
+        prompts: [{ id: 'C20-A', label: 'Nebula Explorer', text: 'Horizontal photo, 16:9. Spacecore scene, lone astronaut in vintage NASA spacesuit floating before swirling purple and teal nebula, distant binary star system casting double shadows, retro-futuristic space station in background. Awe-inspiring cosmic scale, 1970s sci-fi optimism, deep space void with iridescent stardust. --ar 16:9 --style raw' }]
+      }
+    ]
+  }
+];
+
+// ===== BUILD MODE DATA =====
+const styleBases = [
+  { id: 1, name: 'Brutalism 粗野主义', vocab: 'béton brut concrete, form tie hole grid, monumental mass', palette: 'muted warm gray, deep charcoal' },
+  { id: 2, name: 'Bauhaus 包豪斯', vocab: 'geometric volumes, cruciform chrome columns, Mondrian accents', palette: 'desaturated white, travertine beige, chrome silver, muted primaries' },
+  { id: 3, name: 'Deconstructivism 解构主义', vocab: 'diagonal planes, no right angles, spatial dislocation', palette: 'muted whites, steel grays, charcoal' },
+  { id: 4, name: 'Minimalism 极简主义', vocab: 'less is more, negative space, sublime void', palette: 'desaturated whites, pale warm grays' },
+  { id: 5, name: 'Metabolism 新陈代谢派', vocab: 'megastructure core, plug-in capsules, suspended catwalks', palette: 'desaturated warm grays, muted metallics, soft amber' },
+  { id: 6, name: 'High-Tech 高技派', vocab: 'exposed structure, color-coded services, diagrid', palette: 'desaturated steel grays, aluminum silver, muted industrial colors' },
+  { id: 7, name: 'Critical Regionalism 地域主义', vocab: 'sense of place, local materials, geological strata', palette: 'deeply desaturated earth tones — muted ochre, umber, stone gray' },
+  { id: 8, name: 'Parametricism 参数化主义', vocab: 'Zaha Hadid fluid topology, digital morphogenesis, continuous surfaces', palette: 'desaturated whites, pale warm grays, near monochrome' },
+  { id: 9, name: 'Japanese Zen 日本禅意', vocab: 'wabi-sabi patina, ma negative space, yugen profundity', palette: 'desaturated warm wood, shoji cream, gravel gray, charcoal' },
+  { id: 10, name: 'Sustainable 可持续建筑', vocab: 'biophilic design, living green wall, passive ventilation, bamboo structure', palette: 'desaturated sage greens, bamboo gold, earth browns, clay beige' },
+  { id: 11, name: 'Postmodernism 后现代主义', vocab: 'pediment fragment, double-coding, historical pastiche, Memphis geometry', palette: 'desaturated pastels rose mint cream, polished brass, terrazzo, muted teal' },
+  { id: 12, name: 'Art Deco 装饰艺术', vocab: 'chevrons, sunburst, ziggurat, polished brass, monumental symmetry', palette: 'desaturated jewel tones, emerald, sapphire, cream, chrome, black' },
+  { id: 13, name: 'Expressionism 表现主义', vocab: 'Poelzig stalactite dome, Steiner Goetheanum, Taut glass prismatic, Mendelsohn warped form', palette: 'amber-gray plaster, moody amethyst, deep umber, moody blue, warm earth' }
+];
+
+const drawingStyleBases = [
+  { id: 1, name: 'Post-Digital Collage 后数字拼贴风', slug: 'post-digital collage', vocab: '3D render base + photographic textures, grainy paper overlay, cutout figures, halftone patterns', palette: 'desaturated warm grays, muted teal pop, warm paper tone, dusty ochre' },
+  { id: 2, name: 'Watercolor 水彩风', slug: 'watercolor rendering', vocab: 'wet-on-wet wash, pigment granulation, bleeding edges, transparent layered glazes, visible brushstroke', palette: 'muted earth tones, cerulean blue, burnt sienna, raw umber, pale cream paper' },
+  { id: 3, name: 'Hand Sketch 手绘草图风', slug: 'hand sketch', vocab: 'gestural charcoal strokes, varied ink line weight, cross-hatching, visible construction lines, rough paper', palette: 'charcoal black, graphite gray, cream paper, selective muted red accent' },
+  { id: 4, name: 'Line Art 黑白线稿风', slug: 'line art', vocab: 'pure uniform black ink stroke, no shading, no fill, orthographic precision, white negative space', palette: 'black ink, bright white ground, single selective color accent — red or cyan' },
+  { id: 5, name: 'Atmospheric Narrative 氛围叙事风', slug: 'atmospheric rendering', vocab: 'volumetric fog, crepuscular god rays, dramatic weather, cinematic depth of field, golden hour', palette: 'moody grays, mist white, muted warm amber, deep dusk blue' },
+  { id: 6, name: 'Flat Illustration 扁平插画风', slug: 'flat illustration', vocab: 'bold flat color blocks, thin uniform outlines, no gradients, vector aesthetic, geometric abstraction', palette: 'dusty coral, muted teal, warm sand, soft ochre, pale mint, cream' },
+  { id: 7, name: 'Diagrammatic 图解分析风', slug: 'diagrammatic drawing', vocab: 'exploded axonometric, color-coded zones, dashed leader lines, annotation arrows, white ground', palette: 'muted signal red, dusty cyan, warm gray, olive green — on clean white' },
+  { id: 8, name: 'White Model 白模风', slug: 'white model photograph', vocab: 'matte white foam board, precision-cut layers, studio lighting, soft directional shadow, chipboard base', palette: 'pure matte white, subtle warm gray shadow, pale cream chipboard' },
+  { id: 9, name: 'Dark Moody 暗黑竞赛风', slug: 'dark moody rendering', vocab: 'low-key lighting, dramatic single light source, noir atmosphere, deep charcoal blacks, fog at ground', palette: 'deep charcoal black, cool steel gray, midnight blue-black, selective warm amber' },
+  { id: 10, name: 'Vintage Film 复古胶片风', slug: 'vintage film photograph', vocab: '35mm film aesthetic, visible grain, warm amber cast, vignette, Portra 400 color, light leaks', palette: 'warm amber, faded ochre, cream highlights, subtle green shadow shift, muted brown' }
+];
+
+const coreStyleBases = [
+  { id: 1, name: 'Dreamcore 梦核', slug: 'dreamcore', vocab: 'hazy childhood memory, VHS grain, soft focus blur, nostalgic suburban, analog artifacts', palette: 'faded pastel, warm nostalgic glow, low saturation' },
+  { id: 2, name: 'Weirdcore 怪核', slug: 'weirdcore', vocab: 'liminal space, low-res textures, uncanny architecture, nonsensical composition, JPEG artifacts', palette: 'sickly fluorescent green, muted beige, unnatural pastel' },
+  { id: 3, name: 'Fairytalecore 童话核', slug: 'fairytalecore', vocab: 'enchanted forest, storybook illustration, glowing flora, vintage paper texture, ink linework', palette: 'soft pastel, amber glow, lavender, sage green' },
+  { id: 4, name: 'Angelcore 天使核', slug: 'angelcore', vocab: 'white feathers, divine light rays, marble columns, sacred geometry, sheer fabric', palette: 'pristine white, pearl, soft gold, ethereal cream' },
+  { id: 5, name: 'Poolcore 池核', slug: 'poolcore', vocab: '90s swimming pool, turquoise water, caustic light, white tile, curved slide, summer nostalgia', palette: 'chlorine blue, cream white, faded turquoise' },
+  { id: 6, name: 'Aquacore 海洋核', slug: 'aquacore', vocab: 'deep ocean, bioluminescent jellyfish, diving helmet, kelp forest, bubbles', palette: 'navy blue, teal, neon cyan, bioluminescent green' },
+  { id: 7, name: 'Crystalcore 水晶核', slug: 'crystalcore', vocab: 'quartz prisms, light refraction, mineral cave, liquid mercury, spectral patterns', palette: 'iridescent white, cool silver, prismatic rainbow' },
+  { id: 8, name: 'Raincore 雨核', slug: 'raincore', vocab: 'rain-streaked window, neon reflection, wet asphalt, water droplets, melancholy humidity', palette: 'cool blue, warm neon bokeh, wet pavement gray' },
+  { id: 9, name: 'Ghostcore 鬼核', slug: 'ghostcore', vocab: 'pale washed-out interior, vintage lace, tarnished mirror, fog, dried flowers, low energy', palette: 'muted ivory, dusty gray, cobweb silver, faded cream' },
+  { id: 10, name: 'Traumacore 伤核', slug: 'traumacore', vocab: 'soft focus medical, gauze bandages, vintage cabinet, pastel pills, fragile vulnerability', palette: 'muted rose, cream, pale lavender, soft pink' },
+  { id: 11, name: 'Bloodcore 鲜血核', slug: 'bloodcore', vocab: 'crimson silk, black marble, thorny roses, silver dagger, Baroque mirror, Gothic beauty', palette: 'deep red, obsidian black, dark burgundy, candlelight gold' },
+  { id: 12, name: 'Doomcore 末日核', slug: 'doomcore', vocab: 'post-apocalyptic wasteland, crumbling concrete, toxic sky, gas mask, radiation haze', palette: 'toxic orange, ash gray, rust brown, muted amber' },
+  { id: 13, name: 'Industrialcore 工业核', slug: 'industrialcore', vocab: 'steel pipelines, nuclear plant, analog dials, steam vents, riveted iron, Soviet machinery', palette: 'cold steel gray, industrial green, dim tungsten, rusted iron' },
+  { id: 14, name: 'Labcore 实验室核', slug: 'labcore', vocab: 'chemistry flasks, fluorescent reagents, brass microscope, sterile tiles, scientific precision', palette: 'sterile white, fluorescent green, chrome silver, cold blue' },
+  { id: 15, name: 'Viruscore 病毒核', slug: 'viruscore', vocab: 'cellular structures, fluorescent proteins, synthetic biology, electron microscope, membrane texture', palette: 'false-color neon, cyan, magenta, dark bio-black' },
+  { id: 16, name: 'Dirtycore 脏核', slug: 'dirtycore', vocab: 'worn-out denim, cracked concrete, cigarette burns, oil stains, grunge authenticity', palette: 'muted earth brown, washed-out black, faded indigo, dust gray' },
+  { id: 17, name: 'Cybercore 赛博核', slug: 'cybercore', vocab: 'cybernetic implant, chrome circuits, neon fiber optics, rain-slicked skin, holographic ads', palette: 'electric neon blue, hot pink, chrome silver, deep black' },
+  { id: 18, name: 'Glitchcore 故障核', slug: 'glitchcore', vocab: 'RGB channel displacement, scan lines, datamosh, compression artifacts, pixel corruption', palette: 'electric magenta, cyan shift, corrupted white, digital noise' },
+  { id: 19, name: 'Digitalcore 数码核', slug: 'digitalcore', vocab: 'Windows 98 desktop, pop-up windows, pixel art cursor, 3D pipe screensaver, CRT scanlines', palette: 'saturated cyan, magenta, lime green, dark gray, Y2K chrome' },
+  { id: 20, name: 'Spacecore 太空核', slug: 'spacecore', vocab: 'vintage NASA spacesuit, swirling nebula, binary stars, retro-futuristic station, cosmic scale', palette: 'deep space black, purple nebula, teal, iridescent stardust' }
+];
+
+const sceneTypes = [
+  { id: 'atrium', label: 'atrium', text: 'vast public atrium with soaring vertical space' },
+  { id: 'hall', label: 'hall', text: 'grand public hall' },
+  { id: 'gallery', label: 'gallery', text: 'contemplative gallery space' },
+  { id: 'corridor', label: 'corridor', text: 'atmospheric corridor with framed views' },
+  { id: 'stairwell', label: 'stairwell', text: 'sculptural stairwell' },
+  { id: 'courtyard', label: 'courtyard', text: 'threshold between interior and courtyard' },
+  { id: 'pavilion', label: 'pavilion', text: 'open public pavilion' },
+  { id: 'skybridge', label: 'skybridge', text: 'suspended skybridge' },
+  { id: 'meditation', label: 'meditation', text: 'meditation space with still water' },
+  { id: 'lobby', label: 'lobby', text: 'open-plan lobby with flowing circulation' },
+  { id: 'mezzanine', label: 'mezzanine', text: 'cantilevered mezzanine bridging across' },
+  { id: 'capsule', label: 'capsule', text: 'intimate capsule interior, compact living pod' }
+];
+
+const materialKeywords = [
+  { id: 'board-concrete', label: 'board-formed concrete', text: 'board-formed béton brut concrete with wood grain imprint' },
+  { id: 'fair-concrete', label: 'fair-faced concrete', text: 'smooth fair-faced concrete, warm gray matte' },
+  { id: 'plaster', label: 'matte plaster', text: 'hand-troweled matte white plaster walls' },
+  { id: 'stone', label: 'quarried stone', text: 'locally quarried stone, rough split face, chisel marks' },
+  { id: 'rammed-earth', label: 'rammed earth', text: 'rammed earth with visible geological strata, matte powdery texture' },
+  { id: 'dark-timber', label: 'dark timber', text: 'dark stained timber floor, matte oiled finish' },
+  { id: 'hinoki', label: 'hinoki cypress', text: 'vertical hinoki cypress slats with natural grain, matte oiled' },
+  { id: 'steel', label: 'exposed steel', text: 'exposed steel framework, matte dark gray' },
+  { id: 'glass-wall', label: 'glass curtain wall', text: 'full-height glass curtain walls, transparent' },
+  { id: 'aluminum', label: 'matte aluminum', text: 'matte aluminum panels, subtle grain' },
+  { id: 'titanium', label: 'titanium-zinc', text: 'titanium-zinc panels with subtle grain, matte' },
+  { id: 'grc', label: 'GRC white', text: 'matte white GRC with subtle eggshell texture, seamless joints' },
+  { id: 'glass-block', label: 'frosted glass block', text: 'frosted glass block wall diffusing soft daylight' },
+  { id: 'travertine', label: 'travertine', text: 'honed travertine floor' },
+  { id: 'tatami', label: 'tatami', text: 'tatami flooring' },
+  { id: 'shoji', label: 'shoji paper', text: 'shoji paper panels diffusing warm soft glow' },
+  { id: 'concrete-floor', label: 'polished concrete floor', text: 'polished concrete floor, satin matte finish' },
+  { id: 'galvanized', label: 'galvanized grating', text: 'galvanized steel grating, matte' },
+  { id: 'perforated', label: 'perforated metal', text: 'perforated metal flooring, matte industrial texture' }
+];
+
+const lightingKeywords = [
+  { id: 'chiaroscuro', label: 'chiaroscuro', text: 'dramatic chiaroscuro, single beam of daylight cutting through high slit, sharp defined shadows in deep corners' },
+  { id: 'diffused', label: 'soft diffused', text: 'uniform soft diffused daylight from ribbon windows, shadowless luminous glow' },
+  { id: 'zenithal', label: 'zenithal oculus', text: 'zenithal light from circular oculus above, casting perfect ring of light, gentle gradation' },
+  { id: 'fragmented', label: 'fragmented', text: 'fragmented daylight from competing angular openings, multi-directional light beams, complex shadow geometry' },
+  { id: 'dappled', label: 'dappled', text: 'dappled light through timber screen, moving shadow patterns, indirect glow' },
+  { id: 'mist', label: 'mist-diffused', text: 'soft fog-diffused morning light, layered atmospheric depth' },
+  { id: 'raking', label: 'low raking', text: 'low raking horizontal light from hidden opening at floor level, revealing every texture' },
+  { id: 'amber', label: 'warm amber', text: 'warm muted amber interior glow from porthole windows, restrained — never vivid' }
+];
+
+const atmosphereKeywords = [
+  { id: 'solemn', label: 'solemn monumental', text: 'solemn, contemplative, monumental shelter' },
+  { id: 'serene', label: 'serene contemplative', text: 'absolute serenity, contemplative silence, sublime void' },
+  { id: 'dynamic', label: 'dynamic electric', text: 'dynamic, controlled chaos, electric stillness' },
+  { id: 'rational', label: 'rational orderly', text: 'rational, serene, orderly clarity' },
+  { id: 'warm', label: 'warm sheltering', text: 'warm, sheltering, ancestral, grounded, timeless belonging' },
+  { id: 'futuristic', label: 'futuristic fluid', text: 'futuristic, fluid serenity, algorithmic beauty' },
+  { id: 'meditative', label: 'meditative silence', text: 'meditative, timeless, profoundly quiet — seijaku tranquility' },
+  { id: 'precise', label: 'precise transparent', text: 'technological sublime, suspended, weightless, precise' },
+  { id: 'grounded', label: 'grounded timeless', text: 'grounded, earthy, timeless, belonging to this place' }
+];
+
+const qualityModifiers = [
+  { id: 'desaturated', label: 'desaturated tones', text: 'desaturated muted tones, restrained palette' },
+  { id: 'matte', label: 'matte finish', text: 'matte finish, natural material tactility, no gloss' },
+  { id: 'no-flare', label: 'no lens flare', text: 'no lens flare, no yellow glare' },
+  { id: 'negative-space', label: 'negative space', text: 'large areas of negative space, only essential elements' },
+  { id: 'figure', label: 'figure for scale', text: 'a single figure dwarfed by the space for scale' },
+  { id: 'competition', label: 'competition-grade', text: 'competition-grade architectural visualization, MIR aesthetic' },
+  { id: 'wabi-sabi', label: 'wabi-sabi patina', text: 'wabi-sabi patina, subtle wear, material aging' },
+  { id: 'shizen', label: 'shizen naturalness', text: 'shizen — naturalness as architecture, blurred inside/outside boundary' }
+];
+
+const drawingSubjects = [
+  { id: 'facade', label: 'facade', text: 'Brutalist concrete building facade, monumental frontal view' },
+  { id: 'atrium', label: 'atrium', text: 'Brutalist interior atrium, raw concrete pillars, soaring vertical space' },
+  { id: 'plaza', label: 'plaza', text: 'Brutalist public plaza with building mass in background' },
+  { id: 'tower', label: 'tower', text: 'Brutalist concrete tower rising from ground, dramatic upward perspective' },
+  { id: 'corridor', label: 'corridor', text: 'Brutalist interior corridor, rhythmic concrete bays receding into depth' },
+  { id: 'axonometric', label: 'axonometric view', text: 'Brutalist building in 45-degree axonometric projection' },
+  { id: 'detail', label: 'close-up detail', text: 'Close-up detail of brutalist facade — form tie holes, board-form lines, concrete texture' },
+  { id: 'hall', label: 'interior hall', text: 'Brutalist interior hall, monumental concrete columns, vast column-free span' },
+  { id: 'complex', label: 'building complex', text: 'Brutalist building complex, multiple volumes in composition' },
+  { id: 'stairwell', label: 'stairwell', text: 'Sculptural brutalist stairwell, cantilevered concrete treads, geometric void' }
+];
+
+const drawingMediums = [
+  { id: '3d-base', label: '3D render base', text: '3D render base with clean geometry and accurate shadows' },
+  { id: 'photo-texture', label: 'photographic textures', text: 'photographic texture elements composited into the scene' },
+  { id: 'ink-strokes', label: 'ink pen strokes', text: 'rapid ink pen strokes, varied line weight, hand-drawn character' },
+  { id: 'charcoal', label: 'charcoal', text: 'bold gestural charcoal strokes, smudge texture, rough grain' },
+  { id: 'watercolor', label: 'watercolor wash', text: 'soft pigment washes, wet-on-wet bleeding edges, transparent glazes' },
+  { id: 'cutout', label: 'cutout figures', text: 'silhouette cutout figures, photomontage collage elements' },
+  { id: 'paper-overlay', label: 'grainy paper overlay', text: 'grainy paper texture overlay, halftone dot patterns, paper tooth' },
+  { id: 'vector', label: 'vector linework', text: 'clean vector linework, uniform stroke, crisp edges, no variation' },
+  { id: 'foam-board', label: 'foam board model', text: 'matte white foam board, precision-cut layers, physical model aesthetic' },
+  { id: 'film-grain', label: 'film grain / analog', text: '35mm film grain, analog color shift, chemical process imperfection' }
+];
+
+const drawingCompositions = [
+  { id: 'frontal', label: 'bold frontal', text: 'Bold frontal composition, building centered and monumental' },
+  { id: 'isometric', label: 'isometric 45°', text: '45-degree isometric axonometric projection, diagrammatic precision' },
+  { id: 'atmospheric', label: 'atmospheric depth', text: 'Atmospheric depth — near crisp, far dissolved into fog and mist' },
+  { id: 'closeup', label: 'close-up detail', text: 'Close-up composition focusing on material texture and craft' },
+  { id: 'exploded', label: 'exploded view', text: 'Exploded axonometric — layers separated vertically, structural logic revealed' },
+  { id: 'planometric', label: 'planometric cutaway', text: 'Planometric cutaway at eye level, zoning and function mapped in color' },
+  { id: 'cinematic', label: 'cinematic DOF', text: 'Cinematic depth of field, foreground sharp, background softly blurred' }
+];
+
+const drawingFinishes = [
+  { id: 'competition', label: 'competition board', text: 'Raw competition board aesthetic, process-driven, imperfect, narrative' },
+  { id: 'grainy', label: 'grainy texture', text: 'Gritty grain overlay, rough edges, visible masking lines, handmade feel' },
+  { id: 'raw-edges', label: 'raw edges', text: 'Raw edges, sketch masks, visible construction lines, unfinished quality' },
+  { id: 'clean-cut', label: 'clean precision', text: 'Razor-clean cuts, no glue marks, seamless joints, pristine presentation' },
+  { id: 'archival', label: 'archival vintage', text: 'Mid-century documentary aesthetic — as if discovered in an architectural archive' },
+  { id: 'noir', label: 'film noir', text: 'Film noir atmosphere, deep shadows swallowing edges, theatrical mystery' },
+  { id: 'artistic', label: 'artistic impression', text: 'Artistic impression over technical accuracy — capturing mood, not measuring form' }
+];
+
+const drawingQualityMods = [
+  { id: 'desaturated', label: 'desaturated tones', text: 'desaturated muted tones, restrained palette, no vivid colors' },
+  { id: 'matte', label: 'matte finish', text: 'matte finish, no gloss, no reflections, natural surface' },
+  { id: 'paper-texture', label: 'paper texture', text: 'visible paper tooth texture, warm paper base, organic ground' },
+  { id: 'white-ground', label: 'white ground', text: 'clean white background, negative space as primary visual element' },
+  { id: 'grain', label: 'visible grain', text: 'visible grain throughout, film or paper grain texture' },
+  { id: 'no-gradients', label: 'no gradients', text: 'no gradients, no soft shading, hard edge color separation only' },
+  { id: 'precise-line', label: 'fine liner precision', text: 'fine liner aesthetic, crisp orthographic clarity, technical precision' },
+  { id: 'hand-drawn', label: 'hand-drawn authenticity', text: 'hand tremor authenticity, uneven ink flow, human imperfection, alive' }
+];
+
+const cameraTerms = [
+  { id: 'wide', label: 'wide shot', text: 'Wide establishing shot capturing the full scene in context' },
+  { id: 'medium', label: 'medium shot', text: 'Medium shot, subject framed naturally, intimate but not close' },
+  { id: 'closeup', label: 'close-up', text: 'Close-up shot focusing on texture, expression, and fine detail' },
+  { id: 'low-angle', label: 'low angle', text: 'Low angle looking upward, making the subject feel monumental' },
+  { id: 'overhead', label: 'overhead / bird-eye', text: 'Overhead bird-eye view, flat lay composition, patterns and geometry revealed' },
+  { id: 'dutch', label: 'dutch angle', text: 'Slight Dutch tilt, creating unease and dynamic visual tension' },
+  { id: 'pov', label: 'POV / first-person', text: 'First-person POV, as if seen through the eyes of someone in the scene' },
+  { id: 'shallow', label: 'shallow DOF', text: 'Shallow depth of field, subject crisp, background dreamily blurred into bokeh' },
+  { id: 'deep', label: 'deep focus', text: 'Deep focus — everything from foreground to background sharply rendered' },
+  { id: 'panoramic', label: 'panoramic', text: 'Panoramic wide composition, expansive horizontal sweep, cinematic scope' }
+];
+
+const lightingTerms = [
+  { id: 'golden', label: 'golden hour', text: 'Warm golden hour light, long soft shadows, amber glow wrapping surfaces' },
+  { id: 'blue', label: 'blue hour / dusk', text: 'Blue hour dusk transition, cool twilight sky, warm artificial light contrast' },
+  { id: 'overcast', label: 'diffused overcast', text: 'Soft diffused overcast light, no harsh shadows, gentle even illumination' },
+  { id: 'backlit', label: 'backlit / rim light', text: 'Strong backlight creating rim light halo, dramatic silhouette edges' },
+  { id: 'dappled', label: 'dappled light', text: 'Dappled light filtering through trees or structures, shifting organic patterns' },
+  { id: 'chiaroscuro', label: 'chiaroscuro', text: 'Chiaroscuro — dramatic single light source, deep shadows, theatrical contrast' },
+  { id: 'neon', label: 'neon / artificial', text: 'Neon and colored artificial light sources, ambient light spill, night atmosphere' },
+  { id: 'fog', label: 'fog / haze', text: 'Volumetric fog and atmospheric haze, visible light rays in the air' },
+  { id: 'magic', label: 'magic hour twilight', text: 'Magic hour — the brief luminous moment between day and night, ethereal soft glow' },
+  { id: 'practical', label: 'practical lights', text: 'Motivated practical light sources — lamps, candles, windows driving the illumination' }
+];
+
+// ===== STATE =====
+let activeDomain = 'architectural-walkthrough';
+let currentModalPrompt = '';
+let activeTab = 'browse';
+
+// Build mode state
+let buildStyle = '';
+let buildScene = new Set();
+let buildMaterials = new Set();
+let buildLighting = '';
+let buildAtmosphere = '';
+let buildModifiers = new Set();
+
+// ===== BROWSER MODE RENDER =====
+function getDomain() {
+  return domains.find(d => d.id === activeDomain);
+}
+
+function render() {
+  const domain = getDomain();
+  if (!domain) return;
+  const query = document.getElementById('searchBox').value.toLowerCase();
+  const grid = document.getElementById('promptGrid');
+  let html = '';
+  let totalPrompts = 0;
+
+  domain.styles.forEach(style => {
+    const filtered = style.prompts.filter(p =>
+      !query || p.label.toLowerCase().includes(query) || p.text.toLowerCase().includes(query) || style.name.toLowerCase().includes(query)
+    );
+    if (filtered.length === 0 && query) return;
+    totalPrompts += filtered.length;
+
+    filtered.forEach(p => {
+      html += '<div class="prompt-card">' +
+        '<div class="card-header"><div>' +
+        '<span class="style-badge ' + style.badgeClass + '">' + style.name + '</span>' +
+        '<div class="card-subtitle">' + p.id + ' · ' + p.label + '</div>' +
+        '</div></div>' +
+        '<div class="card-body"><div class="prompt-text" title="Click to expand">' + escapeHtml(p.text) + '</div></div>' +
+        '<div class="card-footer">' +
+        '<button class="btn" onclick="viewPrompt(\'' + p.id + '\', \'' + escapeAttr(style.name) + ' — ' + escapeAttr(p.label) + '\', \'' + escapeJs(p.text) + '\')">View</button>' +
+        '<button class="btn primary" onclick="copyPrompt(\'' + escapeJs(p.text) + '\')">Copy</button>' +
+        '</div></div>';
+    });
+  });
+
+  grid.innerHTML = html || '<div class="empty"><p>No prompts match your search.</p></div>';
+  const domainName = domain.name || domain.id;
+  document.getElementById('stats').textContent = domainName + ' — ' + totalPrompts + ' prompts · ' + domain.styles.length + ' concepts';
+}
+
+function escapeHtml(str) { return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escapeAttr(str) { return str.replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+function escapeJs(str) { return str.replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+// ===== MODAL =====
+function viewPrompt(id, title, text) {
+  currentModalPrompt = text;
+  document.getElementById('modalTitle').textContent = title + ' (' + id + ')';
+  document.getElementById('modalPrompt').textContent = text;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+function copyModalPrompt() {
+  copyPrompt(currentModalPrompt);
+}
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ===== COPY =====
+function copyPrompt(text) {
+  copyBuildPrompt(); // use the generic copy that shows toast
+}
+// Override the above — use direct clipboard access
+function copyPrompt(text) {
+  navigator.clipboard.writeText(text).then(function() { showToast(); });
+}
+function showToast() {
+  var t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 1800);
+}
+
+// ===== RESEARCH DIALOG =====
+function openResearchDialog() {
+  document.getElementById('researchOverlay').classList.add('show');
+  document.getElementById('researchResults').style.display = 'none';
+}
+function closeResearchDialog() {
+  document.getElementById('researchOverlay').classList.remove('show');
+}
+document.getElementById('researchOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeResearchDialog();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && document.getElementById('researchOverlay').classList.contains('show')) {
+    closeResearchDialog();
+  }
+});
+
+function getResearchFormData() {
+  return {
+    nameCn: document.getElementById('researchNameCn').value.trim(),
+    nameEn: document.getElementById('researchNameEn').value.trim(),
+    desc: document.getElementById('researchDesc').value.trim(),
+    ar: document.getElementById('researchAr').value,
+    model: document.getElementById('researchModel').value
+  };
+}
+function slugify(text) {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function validateResearchForm(data) {
+  var errors = {};
+  if (!data.nameCn) errors.nameCn = 'Required: theme name in Chinese';
+  if (!data.nameEn) errors.nameEn = 'Required: theme name in English';
+  if (!data.desc) errors.desc = 'Required: describe the scene and mood';
+  if (data.nameEn) {
+    var slug = slugify(data.nameEn);
+    var dup = domains.find(function(d) { return d.id === slug; });
+    if (dup) errors.nameEn = 'Theme "' + dup.name + '" already exists with this slug';
+  }
+  return errors;
+}
+function showFieldError(fieldId, message) {
+  var el = document.getElementById(fieldId);
+  el.classList.add('field-error');
+  var existing = el.parentNode.querySelector('.error-text');
+  if (existing) existing.remove();
+  var errEl = document.createElement('div');
+  errEl.className = 'error-text';
+  errEl.textContent = message;
+  el.parentNode.appendChild(errEl);
+}
+function clearFieldErrors() {
+  document.querySelectorAll('#researchOverlay .field-error').forEach(function(el) { el.classList.remove('field-error'); });
+  document.querySelectorAll('#researchOverlay .error-text').forEach(function(el) { el.remove(); });
+}
+
+function extractKeywords(text) {
+  // Split by common delimiters, filter short words, keep meaningful terms
+  var raw = text.split(/[,，、\s.。！!]+/).filter(function(k) { return k.length > 1; });
+  // Also extract multi-word phrases by looking for common word boundaries
+  var phrases = [];
+  var words = text.split(/[\s,，、]+/);
+  for (var i = 0; i < words.length - 1; i++) {
+    var pair = words[i] + ' ' + words[i + 1];
+    if (pair.length > 5 && pair.length < 50) phrases.push(pair);
+  }
+  var all = raw.concat(phrases);
+  var seen = {};
+  return all.filter(function(t) {
+    var lower = t.toLowerCase();
+    if (seen[lower]) return false;
+    seen[lower] = true;
+    return true;
+  }).slice(0, 25);
+}
+
+function generatePinterestUrls(data) {
+  var keywords = extractKeywords(data.desc);
+  var urls = [];
+  // Search with theme name + varying angles
+  urls.push({ term: data.nameEn + ' aesthetic', url: 'https://www.pinterest.com/search/?q=' + encodeURIComponent(data.nameEn + ' aesthetic') });
+  urls.push({ term: data.nameEn + ' photography', url: 'https://www.pinterest.com/search/?q=' + encodeURIComponent(data.nameEn + ' photography') });
+  urls.push({ term: data.nameEn + ' concept art', url: 'https://www.pinterest.com/search/?q=' + encodeURIComponent(data.nameEn + ' concept art') });
+  // Scene-driven searches using extracted keywords
+  keywords.slice(0, 8).forEach(function(kw) {
+    urls.push({ term: kw + ' (' + data.nameEn + ')', url: 'https://www.pinterest.com/search/?q=' + encodeURIComponent(kw) });
+  });
+  return urls;
+}
+
+function generateXhsTerms(data) {
+  var keywords = extractKeywords(data.desc);
+  var terms = [];
+  terms.push(data.nameCn);
+  terms.push(data.nameCn + ' 场景');
+  terms.push(data.nameCn + ' 氛围感');
+  terms.push(data.nameCn + ' AI 生成');
+  keywords.slice(0, 6).forEach(function(kw) { terms.push(kw); });
+  var seen = {};
+  return terms.filter(function(t) {
+    if (seen[t]) return false;
+    seen[t] = true;
+    return true;
+  }).slice(0, 12);
+}
+
+function generateWebSearchTerms(data) {
+  var keywords = extractKeywords(data.desc).slice(0, 6);
+  var terms = [];
+  terms.push(data.nameEn + ' visual style reference');
+  terms.push(data.nameCn + ' 视觉参考 风格');
+  keywords.forEach(function(kw) { terms.push(kw + ' visual reference'); });
+  return terms.slice(0, 12);
+}
+
+function getPrefix(data) {
+  var desc = data.desc;
+  var outdoor = /户|外|草|天|阳|街|园|野|河|海|山|路|场|光|广|操|公|树|花|云|雨|雪|outdoor|exterior|park|field|garden|street|sky|sun|forest|river|sea|beach/i;
+  var indoor = /室|内|屋|房|厅|厨|卧|教|店|馆|廊|梯|窗|地|墙|门|桌|椅|床|灯|interior|indoor|room|hall|kitchen|bedroom|classroom|shop|corridor/i;
+  if (outdoor.test(desc) && !indoor.test(desc)) return 'Horizontal exterior photo, ' + data.ar + '. ';
+  if (indoor.test(desc) && !outdoor.test(desc)) return 'Horizontal interior photo, ' + data.ar + '. ';
+  return 'Horizontal photo, ' + data.ar + '. ';
+}
+
+function generateDraftPrompts(data) {
+  var prefix = getPrefix(data);
+  var suffix = ' --ar ' + data.ar + ' --style raw';
+  var maxBody = 536 - prefix.length - suffix.length;
+  var desc = data.desc.replace(/[，。！？、\n\r]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+  var sentences = desc.split(/[.。!！?？]+/).filter(function(s) { return s.trim().length > 3; });
+  if (sentences.length === 0) sentences = [desc];
+
+  var moods = [
+    'Warm nostalgic atmosphere, quiet and timeless',
+    'Lively candid moment, spontaneous and authentic',
+    'Quiet contemplative mood, poetic stillness',
+    'Dreamlike serene scene, hazy and ethereal',
+    'Intimate tender feeling, close and personal',
+    'Documentary-style realism, unposed and natural'
+  ];
+  var qualityMods = [
+    'Desaturated muted tones, matte finish, visible film grain, no glossy CG, no lens flare',
+    'Kodachrome color grading, subtle vignette, film grain, desaturated palette',
+    '35mm film aesthetic, slight color shift, warm tone, soft focus edges',
+    'Faded vintage color, light leak at edges, subtle grain, nostalgic warmth'
+  ];
+
+  var prompts = [];
+  var count = Math.min(6, Math.max(4, sentences.length));
+
+  for (var i = 0; i < count; i++) {
+    var scenePart = (sentences[i] || sentences[i % sentences.length]).trim();
+    var cam = cameraTerms[i % cameraTerms.length];
+    var light = lightingTerms[i % lightingTerms.length];
+    var mood = moods[i % moods.length];
+    var quality = qualityMods[i % qualityMods.length];
+
+    // Build: scene + camera + lighting + mood + quality
+    var body = scenePart + '. ' + cam.text + '. ' + light.text + '. ' + mood + '. ' + quality;
+
+    // Trim if needed
+    if (body.length > maxBody) {
+      body = body.substring(0, maxBody - 3) + '...';
+    }
+
+    var prompt = prefix + body + suffix;
+    // Final safety check
+    if (prompt.length > 536) {
+      prompt = prompt.substring(0, 533) + '...';
+    }
+    prompts.push({ text: prompt, length: prompt.length, ok: prompt.length <= 536 });
+  }
+  return prompts;
+}
+
+function generateClaudePrompt(data, pinterestUrls, xhsTerms, webTerms) {
+  var parts = [];
+  parts.push('## Research: ' + data.nameCn + ' (' + data.nameEn + ')');
+  parts.push('');
+  parts.push('**Theme**: ' + data.nameCn + ' / ' + data.nameEn);
+  parts.push('**Scene**: ' + data.desc);
+  parts.push('**AR**: ' + data.ar + ' | **Model**: ' + data.model);
+  parts.push('');
+  parts.push('### Task — WebSearch this theme, then return ONLY a JSON object (no markdown, no explanation):');
+  parts.push('');
+  parts.push('```json');
+  parts.push('{');
+  parts.push('  "concepts": ["subtheme1", "subtheme2", ...],  // 6-8 specific scene types within this theme');
+  parts.push('  "scenes": ["scene desc 1", "scene desc 2", ...],  // 6-8 spatial/prop/environment descriptors');
+  parts.push('  "moods": ["mood1", "mood2", ...],  // 5-6 atmosphere/emotion words');
+  parts.push('  "camera": ["shot type 1", "shot type 2", ...],  // 3-4 best camera shots for this theme');
+  parts.push('  "lighting": ["light type 1", "light type 2", ...]  // 3-4 best lighting setups');
+  parts.push('}');
+  parts.push('```');
+  parts.push('');
+  parts.push('Search these queries for real vocabulary:');
+  webTerms.forEach(function(t) { parts.push('- ' + t); });
+  return parts.join('\n');
+}
+
+function generateDomainJson(data) {
+  var entry = { id: slugify(data.nameEn), name: data.nameCn, nameEn: data.nameEn, ar: data.ar, model: data.model, styles: [] };
+  return JSON.stringify(entry, null, 2);
+}
+
+function renderTermChips(containerId, terms) {
+  var container = document.getElementById(containerId);
+  container.innerHTML = '';
+  terms.forEach(function(term) {
+    var span = document.createElement('span');
+    span.className = 'term-item'; span.textContent = term; span.title = 'Click to copy';
+    span.addEventListener('click', function() {
+      navigator.clipboard.writeText(term).then(function() { showToast(); });
+    });
+    container.appendChild(span);
+  });
+}
+
+function renderResearchResults(data, draftPrompts, pinterestUrls, xhsTerms, webTerms, claudePrompt) {
+  var promptsList = document.getElementById('draftPromptsList');
+  promptsList.innerHTML = '';
+  draftPrompts.forEach(function(p, i) {
+    var div = document.createElement('div');
+    div.className = 'prompt-card';
+    div.style.marginBottom = '12px';
+    div.innerHTML =
+      '<div class="card-header"><div>' +
+      '<span class="style-badge" style="background:#252520;color:#a0a870;border:1px solid #303025;">Prompt ' + (i + 1) + '</span>' +
+      '<div class="card-subtitle">' + p.length + ' chars' + (p.ok ? '' : ' — OVER!') + '</div>' +
+      '</div></div>' +
+      '<div class="card-body"><div class="prompt-text" style="max-height:none;display:block;cursor:pointer;" onclick="navigator.clipboard.writeText(\'' + escapeJs(p.text) + '\').then(function(){showToast();})" title="Click to copy">' + escapeHtml(p.text) + '</div></div>';
+    promptsList.appendChild(div);
+  });
+
+  var urlList = document.getElementById('pinterestUrls');
+  urlList.innerHTML = '';
+  pinterestUrls.forEach(function(item) {
+    var li = document.createElement('li');
+    var a = document.createElement('a');
+    a.href = item.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = item.term;
+    li.appendChild(a); urlList.appendChild(li);
+  });
+
+  renderTermChips('xhsTerms', xhsTerms);
+  renderTermChips('webSearchTerms', webTerms);
+
+  document.getElementById('researchPromptPreview').textContent = claudePrompt;
+  document.getElementById('researchResults').style.display = 'block';
+}
+
+function generateResearchBrief() {
+  clearFieldErrors();
+  var data = getResearchFormData();
+  var errors = validateResearchForm(data);
+  if (Object.keys(errors).length > 0) {
+    Object.keys(errors).forEach(function(key) {
+      var fieldId = key === 'nameCn' ? 'researchNameCn' : key === 'nameEn' ? 'researchNameEn' : 'researchDesc';
+      showFieldError(fieldId, errors[key]);
+    });
+    return;
+  }
+
+  window._researchData = data;
+  _lastResearchResult = null;
+
+  // Show results (no progress bar for Quick Draft)
+  document.getElementById('progressWrap').style.display = 'none';
+  document.getElementById('researchResults').style.display = 'block';
+
+  // Generate draft prompts client-side
+  var draftPrompts = generateDraftPrompts(data);
+  var pinterestTerms = generateXhsTerms(data); // Chinese-ish terms for client-side fallback
+  var pinterestEnTerms = extractKeywords(data.nameEn + ' ' + data.desc);
+
+  // Show simplified results in the directionGroups container
+  document.getElementById('researchResults').style.display = 'block';
+  document.getElementById('pathIndicator').innerHTML =
+    '<span style="color:#8a8a50;">⚡ Quick Draft</span> — client-side prompt generation based on keyword extraction.<br>' +
+    '<span class="hint">For AI-powered research with Pinterest & Huaban scraping, use <b>AI Research</b> instead.</span>';
+
+  var promptsHtml = '';
+  draftPrompts.forEach(function(p, i) {
+    var okClass = p.ok ? '' : ' warn';
+    promptsHtml +=
+      '<div class="prompt-card" style="margin-bottom:12px;">' +
+      '<div class="card-header"><div>' +
+      '<span class="style-badge" style="background:#252520;color:#a0a870;border:1px solid #303025;">Prompt ' + (i + 1) + '</span>' +
+      '<div class="card-subtitle">' + p.length + ' chars</div>' +
+      '</div></div>' +
+      '<div class="card-body"><div class="prompt-text" style="max-height:none;display:block;cursor:pointer;" ' +
+      'onclick="navigator.clipboard.writeText(\'' + escapeJs(p.text) + '\').then(function(){showToast();})" ' +
+      'title="Click to copy">' + escapeHtml(p.text) + '</div></div>' +
+      '</div>';
+  });
+
+  // Tags
+  var tagsHtml = '';
+  if (pinterestEnTerms.length > 0) {
+    tagsHtml += '<div class="vocab-category"><strong>Extracted Keywords:</strong> ' +
+      '<span class="tag-row" id="quickDraftTags"></span></div>';
+  }
+
+  document.getElementById('directionGroups').innerHTML =
+    '<div class="result-section">' +
+    '<div class="build-label">Draft Prompts <span class="hint">(≤536 chars — click any to copy)</span></div>' +
+    tagsHtml +
+    promptsHtml +
+    '</div>';
+
+  if (pinterestEnTerms.length > 0) {
+    renderTagChips('quickDraftTags', pinterestEnTerms.slice(0, 20));
+  }
+
+  document.getElementById('researchResults').scrollIntoView({ behavior: 'smooth' });
+}
+
+function addToMyDomains() {
+  var data = window._researchData;
+  if (!data) { showToast(); return; }
+  createNewDomain(data);
+}
+
+function addToMyDomainsWithVocab() {
+  var data = window._researchData;
+  if (!data) { showToast(); return; }
+  var sel = getSelectedVocab();
+  if (sel.concepts.length === 0 && sel.scenes.length === 0) {
+    // No vocab selected, just use draft prompts
+    createNewDomain(data);
+    return;
+  }
+  // Generate a new prompt from vocab selection
+  var prefix = getPrefix(data);
+  var suffix = ' --ar ' + data.ar + ' --style raw';
+  var promptBody = (sel.scenes.join(', ') || data.desc) + '. ';
+  if (sel.concepts.length > 0) promptBody += sel.concepts.join(', ') + '. ';
+  if (sel.moods.length > 0) promptBody += sel.moods.join(', ') + ' atmosphere. ';
+  if (sel.camera.length > 0) promptBody += sel.camera.join('. ') + '. ';
+  if (sel.lighting.length > 0) promptBody += sel.lighting.join('. ') + '. ';
+  promptBody += 'Desaturated muted tones, matte finish, film grain, no glossy CG.';
+  var prompt = prefix + promptBody + suffix;
+  if (prompt.length > 536) prompt = prompt.substring(0, 533) + '...';
+
+  // Create a single-prompt domain from AI vocab
+  var slug = slugify(data.nameEn);
+  if (!slug) return;
+  var existing = domains.find(function(d) { return d.id === slug; });
+  if (existing) { closeResearchDialog(); resetResearchForm(); switchToDomain(slug); return; }
+
+  var bc = ['#2a2018','#8a7050','#3a2a18'];
+  var className = 'badge-g-' + slug + '-1';
+  var styleName = data.nameCn;
+  var pid = slug.substring(0, 2).toUpperCase() + '-1A';
+
+  var styleEl = document.createElement('style');
+  styleEl.id = className;
+  styleEl.textContent =
+    '.' + className + '{background:' + bc[0] + ';color:' + bc[1] + ';border:1px solid ' + bc[2] + ';}' +
+    '.tag-row .' + className + '{background:#1a1a16;color:' + bc[1] + ';border:1px solid ' + bc[2] + ';}';
+  document.head.appendChild(styleEl);
+
+  var newDomain = {
+    id: slug, name: data.nameCn,
+    styles: [{ id: 1, name: styleName, badgeClass: className, badgeColors: bc,
+      prompts: [{ id: pid, label: styleName + ' A', text: prompt }] }]
+  };
+  domains.push(newDomain);
+  saveUserDomains();
+  renderUserDomainChips();
+  closeResearchDialog();
+  resetResearchForm();
+  switchToDomain(slug);
+}
+
+function createNewDomain(data) {
+  var slug = slugify(data.nameEn);
+  if (!slug) { showFieldError('researchNameEn', 'Cannot generate a valid ID — try a different English name'); return; }
+
+  // Check if domain already exists — if so, just switch to it
+  var existing = domains.find(function(d) { return d.id === slug; });
+  if (existing) {
+    closeResearchDialog();
+    resetResearchForm();
+    switchToDomain(slug);
+    return;
+  }
+
+  var draftPrompts = generateDraftPrompts(data);
+
+  // Generate a fresh set of auto-badge colors
+  var badgeColors = [
+    ['#2a2018','#8a7050','#3a2a18'], ['#1a2820','#5a8a6a','#1a3020'],
+    ['#202830','#6a8a9a','#1a2530'], ['#281a28','#8a5a7a','#301a28'],
+    ['#28281a','#8a8a50','#302a18'], ['#1a2828','#5a8a8a','#1a3028']
+  ];
+
+  // Group prompts into style groups (2 prompts per style)
+  var perStyle = 2;
+  var styleCount = Math.min(Math.floor(draftPrompts.length / perStyle), badgeColors.length);
+  if (styleCount < 1) styleCount = 1;
+
+  var styles = [];
+  for (var i = 0; i < styleCount; i++) {
+    var cam = cameraTerms[i % cameraTerms.length];
+    var light = lightingTerms[(i * 2) % lightingTerms.length];
+    var bc = badgeColors[i];
+    var className = 'badge-g-' + slug + '-' + (i + 1);
+    var styleName = capitalize(cam.label) + ' + ' + capitalize(light.label);
+
+    var prompts = [];
+    for (var j = 0; j < perStyle; j++) {
+      var p = draftPrompts[i * perStyle + j];
+      if (!p) continue;
+      var pid = slug.substring(0, 2).toUpperCase() + '-' + (i + 1) + String.fromCharCode(65 + j);
+      prompts.push({ id: pid, label: styleName + ' ' + String.fromCharCode(65 + j), text: p.text });
+    }
+
+    styles.push({ id: i + 1, name: styleName, badgeClass: className, badgeColors: bc, prompts: prompts });
+
+    // Inject badge CSS
+    var styleEl = document.createElement('style');
+    styleEl.id = className;
+    styleEl.textContent =
+      '.' + className + '{background:' + bc[0] + ';color:' + bc[1] + ';border:1px solid ' + bc[2] + ';}' +
+      '.tag-row .' + className + '{background:#1a1a16;color:' + bc[1] + ';border:1px solid ' + bc[2] + ';}';
+    document.head.appendChild(styleEl);
+  }
+
+  // Create domain entry and add to array
+  var newDomain = { id: slug, name: data.nameCn, styles: styles };
+  domains.push(newDomain);
+
+  // Persist to localStorage and update chips
+  saveUserDomains();
+  renderUserDomainChips();
+
+  // Close dialog, reset, switch to new domain
+  closeResearchDialog();
+  resetResearchForm();
+  switchToDomain(slug);
+}
+
+function switchToDomain(domainId) {
+  activeDomain = domainId;
+  document.querySelectorAll('.domain-chip').forEach(function(c) { c.classList.remove('active'); });
+  var targetChip = document.querySelector('[data-domain="' + domainId + '"]');
+  if (targetChip) targetChip.classList.add('active');
+  document.getElementById('searchBox').value = '';
+  render();
+  initBuildMode();
+}
+
+function capitalize(s) {
+  return s.replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+}
+
+// ===== AI RESEARCH (New Pipeline) =====
+var SERVER_URL = 'http://localhost:3456';
+var _lastResearchResult = null;
+
+// ===== API KEY =====
+var apiKeyConnected = false;
+
+// Check on load
+fetch(SERVER_URL + '/api/health')
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.ok && data.hasKey) {
+      setApiConnected(true);
+    }
+  })
+  .catch(function() {});
+
+function setApiConnected(connected) {
+  apiKeyConnected = connected;
+  var indicator = document.getElementById('apiIndicator');
+  if (connected) {
+    indicator.style.borderColor = 'rgba(118,255,3,0.3)';
+    indicator.style.background = 'rgba(118,255,3,0.08)';
+    indicator.style.color = '#76ff03';
+    indicator.innerHTML = '● API';
+  } else {
+    indicator.style.borderColor = 'rgba(255,82,82,0.3)';
+    indicator.style.background = 'rgba(255,82,82,0.08)';
+    indicator.style.color = '#ff5252';
+    indicator.innerHTML = '● API';
+  }
+}
+
+function verifyAndSaveKey() {
+  var input = document.getElementById('apiKeyInput');
+  var msg = document.getElementById('apiMsg');
+  var key = input.value.trim();
+  if (!key) {
+    msg.innerHTML = '<span style="color:#ff5252;">Enter key</span>';
+    return;
+  }
+  msg.innerHTML = '<span style="color:#ffab00;">Verifying...</span>';
+  fetch(SERVER_URL + '/api/verify-key', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: key })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(result) {
+    if (result.ok) {
+      setApiConnected(true);
+      msg.innerHTML = '<span style="color:#76ff03;">Connected!</span>';
+    } else {
+      msg.innerHTML = '<span style="color:#ff5252;">' + (result.error || 'Invalid') + '</span>';
+    }
+  })
+  .catch(function() {
+    msg.innerHTML = '<span style="color:#ff5252;">Server offline</span>';
+  });
+}
+
+function aiResearchVocab() {
+  clearFieldErrors();
+  var data = getResearchFormData();
+  var errors = validateResearchForm(data);
+  if (Object.keys(errors).length > 0) {
+    Object.keys(errors).forEach(function(key) {
+      var fieldId = key === 'nameCn' ? 'researchNameCn' : key === 'nameEn' ? 'researchNameEn' : 'researchDesc';
+      showFieldError(fieldId, errors[key]);
+    });
+    return;
+  }
+
+  // Check API key
+  if (!apiKeyConnected) {
+    var indicator = document.getElementById('apiIndicator');
+    indicator.style.animation = 'pulse 0.6s ease-out';
+    setTimeout(function() { indicator.style.animation = ''; }, 600);
+    alert('Please connect your DeepSeek API key first using the input bar above.');
+    return;
+  }
+
+  // Show results + progress bar
+  window._researchData = data;
+  document.getElementById('researchResults').style.display = 'block';
+  document.getElementById('pathIndicator').innerHTML = '';
+  document.getElementById('directionGroups').innerHTML = '';
+  document.getElementById('progressWrap').style.display = 'block';
+  updateProgress(0, 'Connecting to AI server...');
+
+  var status = document.getElementById('aiResearchStatus');
+  status.style.display = 'block';
+  status.textContent = '';
+  status.style.color = '#6a8a6a';
+
+  // SSE: stream progress from server
+  fetch(SERVER_URL + '/api/research', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).then(function(resp) {
+    if (!resp.ok) {
+      return resp.text().then(function(txt) {
+        try { var e = JSON.parse(txt); throw new Error(e.error || e.message || 'Server error'); }
+        catch (_) { throw new Error('Server error ' + resp.status); }
+      });
+    }
+    var reader = resp.body.getReader();
+    var decoder = new TextDecoder();
+    var buffer = '';
+
+    function pump() {
+      return reader.read().then(function(result) {
+        if (result.done) return;
+        buffer += decoder.decode(result.value, { stream: true });
+
+        // Parse SSE events from buffer
+        var lines = buffer.split('\n');
+        buffer = lines.pop(); // keep incomplete line in buffer
+
+        var eventType = '', eventData = '';
+        for (var i = 0; i < lines.length; i++) {
+          var line = lines[i];
+          if (line.startsWith('event: ')) {
+            eventType = line.slice(7).trim();
+          } else if (line.startsWith('data: ')) {
+            eventData = line.slice(6);
+            // If next line is also data, continue accumulating
+          } else if (line === '' && eventType) {
+            // Empty line = end of event
+            try {
+              var parsed = JSON.parse(eventData);
+              handleSSEEvent(eventType, parsed);
+            } catch (e) { console.log('SSE parse error:', e); }
+            eventType = '';
+            eventData = '';
+          }
+        }
+        return pump(); // continue reading
+      });
+    }
+    return pump();
+  }).catch(function(err) {
+    updateProgress(0, '');
+    document.getElementById('progressWrap').style.display = 'none';
+    var msg = err.message || 'Unknown error';
+    // If it's a network error (server not running), show start command
+    if (msg.includes('fetch') || msg.includes('NetworkError') || msg.includes('Failed to fetch')) {
+      document.getElementById('pathIndicator').innerHTML =
+        '<span style="color:#b87878;">⚠ Server not running</span><br>' +
+        'Start the research server: <code style="background:#1a1a1c;padding:2px 6px;border-radius:3px;">node auto-gen/server.js</code>';
+    } else {
+      // Show actual error from server (validation, API key, etc.)
+      document.getElementById('pathIndicator').innerHTML =
+        '<span style="color:#b87878;">⚠ ' + msg + '</span>';
+    }
+    status.style.display = 'none';
+    console.error('AI research failed:', err);
+  });
+}
+
+function handleSSEEvent(type, data) {
+  var status = document.getElementById('aiResearchStatus');
+  if (type === 'progress') {
+    updateProgress(data.percent, data.message);
+    status.textContent = data.message;
+    status.style.color = '#8a8a50';
+  } else if (type === 'result') {
+    updateProgress(100, 'Complete!');
+    document.getElementById('progressWrap').style.display = 'none';
+    _lastResearchResult = data;
+    renderDirectionGroups(data);
+    status.style.display = 'none';
+  } else if (type === 'error') {
+    updateProgress(0, '');
+    document.getElementById('progressWrap').style.display = 'none';
+    document.getElementById('pathIndicator').innerHTML = '<span style="color:#b87878;">⚠ ' + (data.error || 'Unknown error') + '</span>';
+    status.style.display = 'none';
+  }
+}
+
+function updateProgress(pct, message) {
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressStep').textContent = message || '';
+}
+
+function renderDirectionGroups(result) {
+  // Path indicator
+  var pathLabel = result.path === 'brainstorm'
+    ? '<span style="color:#a0a870;">🧠 Brainstorm Mode</span> — AI expanded your concept into ' + result.directions.length + ' scene directions'
+    : '<span style="color:#7a9a7a;">🎯 Focused Mode</span> — ' + result.directions.length + ' refined directions based on your description';
+  var dimTags = (result.dimensions || []).map(function(d) { return '<span class="tag-chip" style="font-size:10px;padding:2px 8px;margin:2px;">' + d + '</span>'; }).join('');
+  var refs = (result.academicRefs || []).length > 0
+    ? '<br><span style="color:#6a6a6a;">References: ' + result.academicRefs.join(', ') + '</span>'
+    : '';
+  document.getElementById('pathIndicator').innerHTML =
+    pathLabel +
+    '<br><span style="color:#555;">Domain: ' + result.domain + '</span> ' + dimTags + refs;
+
+  // Direction groups
+  var groupsHtml = '';
+  result.directions.forEach(function(dir, i) {
+    var promptCards = '';
+    (dir.prompts || []).forEach(function(p) {
+      var statusClass = p.ok ? '' : ' warn';
+      promptCards +=
+        '<div class="prompt-card" style="margin-bottom:8px;">' +
+        '<div class="card-body" style="padding:12px 16px;">' +
+        '<div class="prompt-text" style="max-height:none;display:block;cursor:pointer;" ' +
+        'onclick="navigator.clipboard.writeText(\'' + escapeJs(p.text) + '\').then(function(){showToast();})" ' +
+        'title="Click to copy">' + escapeHtml(p.text) + '</div>' +
+        '<div class="count' + statusClass + '" style="margin-top:4px;">' + p.length + ' chars</div>' +
+        '</div></div>';
+    });
+
+    groupsHtml +=
+      '<div class="result-section">' +
+      '<div class="build-label">Direction ' + (i + 1) + ': ' + escapeHtml(dir.name) +
+        ' <span class="hint">(' + escapeHtml(dir.concept) + ')</span></div>' +
+      (dir.sceneDescription ? '<div style="font-size:12px;color:#777;margin-bottom:8px;">' + escapeHtml(dir.sceneDescription) + '</div>' : '') +
+      // Tags
+      '<div class="vocab-category">' +
+        '<strong>Pinterest:</strong> <span class="tag-row" id="dirPinterest' + i + '"></span></div>' +
+      '<div class="vocab-category">' +
+        '<strong>花瓣网:</strong> <span class="tag-row" id="dirHuaban' + i + '"></span></div>' +
+      // Prompts
+      promptCards +
+      '</div>';
+  });
+  document.getElementById('directionGroups').innerHTML = groupsHtml;
+
+  // Render tag chips for each direction
+  result.directions.forEach(function(dir, i) {
+    renderTagChips('dirPinterest' + i, dir.tags?.pinterest || []);
+    renderTagChips('dirHuaban' + i, dir.tags?.huaban || []);
+  });
+
+  document.getElementById('researchResults').scrollIntoView({ behavior: 'smooth' });
+}
+
+function renderTagChips(containerId, terms) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '';
+  terms.forEach(function(term) {
+    var chip = document.createElement('span');
+    chip.className = 'tag-chip';
+    chip.textContent = term;
+    chip.title = 'Click to copy';
+    chip.style.cursor = 'pointer';
+    chip.addEventListener('click', function() {
+      navigator.clipboard.writeText(term).then(function() { showToast(); });
+    });
+    container.appendChild(chip);
+  });
+}
+
+document.getElementById('aiResearchBtn').addEventListener('click', aiResearchVocab);
+document.getElementById('addToDomainsBtn').addEventListener('click', addToMyDomains);
+
+function addToMyDomains() {
+  var data = window._researchData;
+  if (!data) { showToast(); return; }
+
+  // If we have AI research results with prompts, use those
+  var allPrompts = [];
+  if (_lastResearchResult && _lastResearchResult.directions) {
+    _lastResearchResult.directions.forEach(function(dir) {
+      (dir.prompts || []).forEach(function(p) {
+        if (p.ok !== false) allPrompts.push({ text: p.text, label: dir.name, length: p.length });
+      });
+    });
+  }
+
+  if (allPrompts.length > 0) {
+    createNewDomainFromPrompts(data, allPrompts);
+  } else {
+    createNewDomain(data);
+  }
+}
+
+function createNewDomainFromPrompts(data, prompts) {
+  var slug = slugify(data.nameEn);
+  if (!slug) { showFieldError('researchNameEn', 'Cannot generate a valid ID — try a different English name'); return; }
+
+  var existing = domains.find(function(d) { return d.id === slug; });
+  if (existing) { closeResearchDialog(); resetResearchForm(); switchToDomain(slug); return; }
+
+  var badgeColors = [
+    ['#2a2018','#8a7050','#3a2a18'], ['#1a2820','#5a8a6a','#1a3020'],
+    ['#202830','#6a8a9a','#1a2530'], ['#281a28','#8a5a7a','#301a28'],
+    ['#28281a','#8a8a50','#302a18'], ['#1a2828','#5a8a8a','#1a3028']
+  ];
+
+  // Group prompts: max 2 per style, create multiple styles if needed
+  var perStyle = 2;
+  var styleCount = Math.min(Math.ceil(prompts.length / perStyle), badgeColors.length);
+  var styles = [];
+
+  for (var i = 0; i < styleCount; i++) {
+    var bc = badgeColors[i];
+    var className = 'badge-g-' + slug + '-' + (i + 1);
+    var stylePrompts = [];
+    for (var j = 0; j < perStyle; j++) {
+      var idx = i * perStyle + j;
+      if (idx >= prompts.length) break;
+      var pid = slug.substring(0, 2).toUpperCase() + '-' + (i + 1) + String.fromCharCode(65 + j);
+      stylePrompts.push({ id: pid, label: (prompts[idx].label || 'Prompt') + ' ' + String.fromCharCode(65 + j), text: prompts[idx].text });
+    }
+
+    var styleName = prompts[i * perStyle]?.label || data.nameCn;
+    if (stylePrompts.length > 1) styleName = stylePrompts[0].label;
+
+    styles.push({ id: i + 1, name: styleName, badgeClass: className, badgeColors: bc, prompts: stylePrompts });
+
+    // Inject badge CSS
+    var styleEl = document.createElement('style');
+    styleEl.id = className;
+    styleEl.textContent =
+      '.' + className + '{background:' + bc[0] + ';color:' + bc[1] + ';border:1px solid ' + bc[2] + ';}' +
+      '.tag-row .' + className + '{background:#1a1a16;color:' + bc[1] + ';border:1px solid ' + bc[2] + ';}';
+    document.head.appendChild(styleEl);
+  }
+
+  var newDomain = { id: slug, name: data.nameCn, styles: styles };
+  domains.push(newDomain);
+
+  saveUserDomains();
+  renderUserDomainChips();
+  closeResearchDialog();
+  resetResearchForm();
+  switchToDomain(slug);
+}
+
+function copyAllPrompts() {
+  // Collect prompts from rendered direction groups
+  var promptEls = document.querySelectorAll('#directionGroups .prompt-text');
+  var texts = [];
+  promptEls.forEach(function(el) { texts.push(el.textContent); });
+  if (texts.length > 0) {
+    navigator.clipboard.writeText(texts.join('\n\n---\n\n')).then(function() { showToast(); });
+  } else {
+    showToast();
+  }
+}
+
+function resetResearchForm() {
+  document.getElementById('researchNameCn').value = '';
+  document.getElementById('researchNameEn').value = '';
+  document.getElementById('researchDesc').value = '';
+  document.getElementById('researchAr').selectedIndex = 0;
+  document.getElementById('researchModel').selectedIndex = 0;
+  document.getElementById('researchResults').style.display = 'none';
+  document.getElementById('pathIndicator').innerHTML = '';
+  document.getElementById('directionGroups').innerHTML = '';
+  document.getElementById('progressWrap').style.display = 'none';
+  updateProgress(0, '');
+  _lastResearchResult = null;
+  clearFieldErrors();
+}
+
+// ===== TAB SWITCHING =====
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelector('[data-tab="' + tab + '"]').classList.add('active');
+  document.getElementById('browseMode').style.display = tab === 'browse' ? 'block' : 'none';
+  document.getElementById('buildMode').style.display = tab === 'build' ? 'block' : 'none';
+}
+
+// ===== FILTER =====
+document.getElementById('searchBox').addEventListener('input', render);
+
+// ===== DOMAIN SWITCHING =====
+document.getElementById('domainBar').addEventListener('click', function(e) {
+  var chip = e.target.closest('.domain-chip');
+  if (!chip || chip.disabled) return;
+  if (chip.id === 'addDomainBtn') { openResearchDialog(); return; }
+  var domainId = chip.dataset.domain;
+  if (domainId === activeDomain) return;
+  switchToDomain(domainId);
+});
+
+// ===== EXPAND / COLLAPSE =====
+document.getElementById('expandAll').addEventListener('click', function() {
+  document.querySelectorAll('.prompt-text').forEach(function(el) { el.style.display = 'block'; el.style.webkitLineClamp = 'unset'; el.style.maxHeight = 'none'; });
+});
+document.getElementById('collapseAll').addEventListener('click', function() {
+  document.querySelectorAll('.prompt-text').forEach(function(el) { el.style.display = '-webkit-box'; el.style.webkitLineClamp = '4'; el.style.maxHeight = '76px'; });
+});
+
+// ===== BUILD MODE =====
+function initBuildMode() {
+  var sel = document.getElementById('buildStyle');
+  sel.innerHTML = '<option value="">— Select a style —</option>';
+  var bases = activeDomain === 'architectural-drawing-styles' ? drawingStyleBases : activeDomain === 'visual-cores' ? coreStyleBases : styleBases;
+  bases.forEach(function(s) {
+    var opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name;
+    sel.appendChild(opt);
+  });
+
+  // Update build section labels
+  var isDrawing = activeDomain === 'architectural-drawing-styles';
+  document.querySelector('#buildMode .build-section:nth-child(2) .build-label').innerHTML = '2. ' + (isDrawing ? 'Subject' : 'Scene Type') + ' <span class="hint">(select 1-2)</span>';
+  document.querySelector('#buildMode .build-section:nth-child(3) .build-label').innerHTML = '3. ' + (isDrawing ? 'Medium / Technique' : 'Material Keywords') + ' <span class="hint">(multi-select)</span>';
+  document.querySelector('#buildMode .build-section:nth-child(4) .build-label').innerHTML = '4. ' + (isDrawing ? 'Composition' : 'Lighting Strategy') + ' <span class="hint">(select one)</span>';
+  document.querySelector('#buildMode .build-section:nth-child(5) .build-label').innerHTML = '5. ' + (isDrawing ? 'Finish / Texture' : 'Atmosphere Tone') + ' <span class="hint">(select one)</span>';
+  document.querySelector('#buildMode .build-section:nth-child(6) .build-label').innerHTML = '6. Quality Modifiers <span class="hint">(toggle on/off)</span>';
+
+  // Populate tag rows
+  if (isDrawing) {
+    renderTagRow('sceneTags', drawingSubjects, buildScene, 'multi', 'scene');
+    renderTagRow('materialTags', drawingMediums, buildMaterials, 'multi', 'material');
+    renderTagRow('lightingTags', drawingCompositions, null, 'single', 'lighting');
+    renderTagRow('atmosphereTags', drawingFinishes, null, 'single', 'atmosphere');
+    renderTagRow('modifierTags', drawingQualityMods, buildModifiers, 'multi', 'modifier');
+  } else {
+    renderTagRow('sceneTags', sceneTypes, buildScene, 'multi', 'scene');
+    renderTagRow('materialTags', materialKeywords, buildMaterials, 'multi', 'material');
+    renderTagRow('lightingTags', lightingKeywords, null, 'single', 'lighting');
+    renderTagRow('atmosphereTags', atmosphereKeywords, null, 'single', 'atmosphere');
+    renderTagRow('modifierTags', qualityModifiers, buildModifiers, 'multi', 'modifier');
+  }
+
+  resetBuildState();
+}
+
+function renderTagRow(containerId, items, stateSet, mode, category) {
+  var container = document.getElementById(containerId);
+  container.innerHTML = '';
+  items.forEach(function(item) {
+    var chip = document.createElement('span');
+    chip.className = 'tag-chip';
+    chip.textContent = item.label;
+    chip.dataset.id = item.id;
+    chip.dataset.category = category;
+    chip.dataset.mode = mode;
+    if (stateSet && stateSet.has(item.id)) chip.classList.add('selected');
+    chip.addEventListener('click', function() {
+      if (mode === 'single') {
+        // Deselect all in this category
+        container.querySelectorAll('.tag-chip').forEach(function(c) { c.classList.remove('selected'); });
+        chip.classList.add('selected');
+        if (category === 'lighting') { buildLighting = item.id; }
+        if (category === 'atmosphere') { buildAtmosphere = item.id; }
+      } else {
+        chip.classList.toggle('selected');
+        if (stateSet.has(item.id)) { stateSet.delete(item.id); }
+        else { stateSet.add(item.id); }
+      }
+      updateBuild();
+    });
+    container.appendChild(chip);
+  });
+}
+
+document.getElementById('buildStyle').addEventListener('change', function() {
+  buildStyle = this.value;
+  var info = document.getElementById('styleInfo');
+  if (buildStyle) {
+    var bases = activeDomain === 'architectural-drawing-styles' ? drawingStyleBases : activeDomain === 'visual-cores' ? coreStyleBases : styleBases;
+    var s = bases.find(function(x) { return x.id == buildStyle; });
+    info.textContent = 'Vocab: ' + s.vocab + ' | Palette: ' + s.palette;
+  } else {
+    info.textContent = '';
+  }
+  updateBuild();
+});
+
+function getSelectedTags(containerId) {
+  var tags = [];
+  document.querySelectorAll('#' + containerId + ' .tag-chip.selected').forEach(function(c) {
+    tags.push(c.dataset.id);
+  });
+  return tags;
+}
+
+function getItemById(items, id) {
+  return items.find(function(i) { return i.id === id; });
+}
+
+function updateBuild() {
+  var isDrawing = activeDomain === 'architectural-drawing-styles';
+  var prompt, parts = [];
+
+  if (isDrawing) {
+    // Drawing Styles domain
+    prompt = 'Architectural ';
+    var sb = drawingStyleBases.find(function(x) { return x.id == buildStyle; });
+    if (sb) {
+      prompt += sb.slug;
+    }
+    prompt += ', horizontal 16:9. ';
+
+    if (buildStyle && sb) {
+      parts.push(sb.vocab);
+    }
+
+    var sceneIds = getSelectedTags('sceneTags');
+    var sceneTexts = [];
+    sceneIds.forEach(function(id) {
+      var item = getItemById(drawingSubjects, id);
+      if (item) sceneTexts.push(item.text);
+    });
+
+    var matIds = getSelectedTags('materialTags');
+    var matTexts = [];
+    matIds.forEach(function(id) {
+      var item = getItemById(drawingMediums, id);
+      if (item) matTexts.push(item.text);
+    });
+
+    var compText = '';
+    if (buildLighting) {
+      var c = getItemById(drawingCompositions, buildLighting);
+      if (c) compText = c.text;
+    }
+
+    var finishText = '';
+    if (buildAtmosphere) {
+      var f = getItemById(drawingFinishes, buildAtmosphere);
+      if (f) finishText = f.text;
+    }
+
+    var modIds = getSelectedTags('modifierTags');
+    var modTexts = [];
+    modIds.forEach(function(id) {
+      var item = getItemById(drawingQualityMods, id);
+      if (item) modTexts.push(item.text);
+    });
+
+    if (sceneTexts.length > 0) {
+      parts.push(sceneTexts.join(', '));
+    }
+    if (matTexts.length > 0) {
+      parts.push(matTexts.join(', ') + ' — mixed media');
+    }
+    if (compText) {
+      parts.push(compText);
+    }
+    if (finishText) {
+      parts.push(finishText);
+    }
+    if (modTexts.length > 0) {
+      parts.push(modTexts.join(', '));
+    }
+    if (buildStyle && sb) {
+      parts.push(sb.palette);
+    }
+
+    prompt += parts.join('. ') + '. --ar 16:9 --style raw';
+  } else {
+    // Walkthrough domain (original)
+    prompt = 'Horizontal interior photo, 16:9. ';
+
+    if (buildStyle) {
+      var s = styleBases.find(function(x) { return x.id == buildStyle; });
+      parts.push(s.vocab);
+    }
+
+    var sceneIds = getSelectedTags('sceneTags');
+    var sceneTexts = [];
+    sceneIds.forEach(function(id) {
+      var item = getItemById(sceneTypes, id);
+      if (item) sceneTexts.push(item.text);
+    });
+
+    var matIds = getSelectedTags('materialTags');
+    var matTexts = [];
+    matIds.forEach(function(id) {
+      var item = getItemById(materialKeywords, id);
+      if (item) matTexts.push(item.text);
+    });
+
+    var lightText = '';
+    if (buildLighting) {
+      var l = getItemById(lightingKeywords, buildLighting);
+      if (l) lightText = l.text;
+    }
+
+    var atmoText = '';
+    if (buildAtmosphere) {
+      var a = getItemById(atmosphereKeywords, buildAtmosphere);
+      if (a) atmoText = a.text;
+    }
+
+    var modIds = getSelectedTags('modifierTags');
+    var modTexts = [];
+    modIds.forEach(function(id) {
+      var item = getItemById(qualityModifiers, id);
+      if (item) modTexts.push(item.text);
+    });
+
+    if (sceneTexts.length > 0) {
+      parts.push(sceneTexts.join(', '));
+    }
+    if (matTexts.length > 0) {
+      parts.push(matTexts.join(', ') + ', all matte');
+    }
+    if (lightText) {
+      parts.push(lightText);
+    }
+    if (atmoText) {
+      parts.push(atmoText);
+    }
+    if (modTexts.length > 0) {
+      parts.push(modTexts.join(', '));
+    }
+    if (buildStyle) {
+      var st = styleBases.find(function(x) { return x.id == buildStyle; });
+      parts.push(st.palette);
+    }
+
+    prompt += parts.join('. ') + '. --ar 16:9 --style raw';
+  }
+
+  document.getElementById('buildPreview').textContent = prompt;
+
+  var len = prompt.length;
+  var countEl = document.getElementById('buildCount');
+  countEl.textContent = len + ' chars';
+  countEl.className = 'count' + (len > 536 ? ' warn' : '');
+}
+
+function copyBuildPrompt() {
+  var text = document.getElementById('buildPreview').textContent;
+  navigator.clipboard.writeText(text).then(function() { showToast(); });
+}
+
+function resetBuildState() {
+  buildStyle = '';
+  buildScene.clear();
+  buildMaterials.clear();
+  buildLighting = '';
+  buildAtmosphere = '';
+  buildModifiers.clear();
+}
+
+function resetBuild() {
+  resetBuildState();
+  document.getElementById('buildStyle').value = '';
+  document.getElementById('styleInfo').textContent = '';
+  document.querySelectorAll('#buildMode .tag-chip.selected').forEach(function(c) { c.classList.remove('selected'); });
+  document.getElementById('buildPreview').textContent = 'Select a style and configure keywords above to build your prompt...';
+  document.getElementById('buildCount').textContent = '';
+  document.getElementById('buildCount').className = 'count';
+}
+
+// ===== STORAGE =====
+var STORAGE_KEY = 'happy-oyster-user-domains';
+
+function loadUserDomains() {
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    var saved = JSON.parse(raw);
+    if (!Array.isArray(saved)) return [];
+    // Restore badge CSS for saved domains
+    saved.forEach(function(d) {
+      (d.styles || []).forEach(function(s) {
+        if (!s.badgeClass) return;
+        if (document.getElementById(s.badgeClass)) return; // already injected
+        // Reconstruct badge CSS from the style's stored colors or use defaults
+        var colors = s.badgeColors || ['#2a2018','#8a7050','#3a2a18'];
+        var styleEl = document.createElement('style');
+        styleEl.id = s.badgeClass;
+        styleEl.textContent =
+          '.' + s.badgeClass + '{background:' + colors[0] + ';color:' + colors[1] + ';border:1px solid ' + colors[2] + ';}' +
+          '.tag-row .' + s.badgeClass + '{background:#1a1a16;color:' + colors[1] + ';border:1px solid ' + colors[2] + ';}';
+        document.head.appendChild(styleEl);
+      });
+    });
+    return saved;
+  } catch (e) { return []; }
+}
+
+function saveUserDomains() {
+  var userDomains = [];
+  domains.forEach(function(d) {
+    if (d.id === 'architectural-walkthrough' || d.id === 'architectural-drawing-styles') return;
+    userDomains.push(d);
+  });
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(userDomains)); } catch (e) {}
+}
+
+function getUserDomainChips() {
+  return document.querySelectorAll('.domain-chip.user-domain');
+}
+
+function removeDomainChips() {
+  getUserDomainChips().forEach(function(c) { c.remove(); });
+}
+
+function renderUserDomainChips() {
+  removeDomainChips();
+  var userDomains = domains.filter(function(d) {
+    return d.id !== 'architectural-walkthrough' && d.id !== 'architectural-drawing-styles';
+  });
+  var bar = document.getElementById('domainBar');
+  userDomains.forEach(function(d) {
+    var chip = document.createElement('button');
+    chip.className = 'domain-chip user-domain';
+    chip.dataset.domain = d.id;
+    chip.innerHTML = d.name + ' <span class="chip-del" data-del="' + d.id + '" title="Delete domain">&times;</span>';
+    bar.appendChild(chip);
+  });
+}
+
+// Handle delete clicks on domain chips (event delegation)
+document.getElementById('domainBar').addEventListener('click', function(e) {
+  var del = e.target.closest('.chip-del');
+  if (!del) return;
+  e.stopPropagation();
+  e.preventDefault();
+  var domainId = del.dataset.del;
+  if (confirm('Delete domain "' + domainId + '" and all its prompts?')) {
+    deleteDomain(domainId);
+  }
+});
+
+function deleteDomain(domainId) {
+  // Remove from array
+  domains = domains.filter(function(d) { return d.id !== domainId; });
+  // Clean up badge styles
+  var styleEls = document.querySelectorAll('style[id*="' + domainId + '"]');
+  styleEls.forEach(function(el) { el.remove(); });
+  // If active, switch to first domain
+  if (activeDomain === domainId) {
+    activeDomain = domains.length > 0 ? domains[0].id : 'architectural-walkthrough';
+    document.querySelectorAll('.domain-chip').forEach(function(c) { c.classList.remove('active'); });
+    var firstChip = document.querySelector('[data-domain="' + activeDomain + '"]');
+    if (firstChip) firstChip.classList.add('active');
+  }
+  removeDomainChips();
+  renderUserDomainChips();
+  saveUserDomains();
+  render();
+  initBuildMode();
+}
+
+// Restore user domains on page load
+var savedDomains = loadUserDomains();
+savedDomains.forEach(function(d) { domains.push(d); });
+
+// ===== INIT =====
+renderUserDomainChips();
+initBuildMode();
+render();
+document.getElementById('generateBriefBtn').addEventListener('click', generateResearchBrief);
+document.getElementById('resetResearchBtn').addEventListener('click', resetResearchForm);
+document.getElementById('copyAllPromptsBtn').addEventListener('click', copyAllPrompts);
+</script>
+</body>
+</html>

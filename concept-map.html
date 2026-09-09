@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concept Map — Visual Vocabulary Explorer</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #0a0a0c;
+  color: #d0d0d0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ===== SVG Connections ===== */
+#connectionSvg {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+.connection-line {
+  stroke: rgba(255,255,255,0.12);
+  stroke-width: 1;
+  fill: none;
+  transition: stroke 0.3s, stroke-width 0.3s;
+}
+.connection-line.selected-line {
+  stroke: rgba(255,200,80,0.35);
+  stroke-width: 2;
+}
+
+/* ===== Nodes ===== */
+.node {
+  position: absolute;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.3s, border-color 0.3s;
+  z-index: 2;
+  text-align: center;
+  padding: 10px;
+  /* Glassmorphism */
+  background: rgba(30, 32, 40, 0.55);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.node:hover {
+  transform: scale(1.08);
+  border-color: rgba(255,255,255,0.25);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+  z-index: 10;
+}
+.node .cn { color: #e0e0e0; font-weight: 500; word-break: break-word; line-height: 1.25; }
+.node .en { color: #6a8aaa; font-weight: 400; word-break: break-word; line-height: 1.2; margin-top: 1px; }
+
+/* Node sizes */
+.node.root-node { width: 130px; height: 130px; }
+.node.root-node .cn { font-size: 15px; max-width: 100px; }
+.node.root-node .en { font-size: 10px; max-width: 100px; }
+
+.node.level-1 { width: 100px; height: 100px; }
+.node.level-1 .cn { font-size: 12px; max-width: 78px; }
+.node.level-1 .en { font-size: 9px; max-width: 78px; }
+
+.node.level-2 { width: 84px; height: 84px; }
+.node.level-2 .cn { font-size: 10px; max-width: 64px; }
+.node.level-2 .en { font-size: 8px; max-width: 64px; }
+
+.node.level-3 { width: 72px; height: 72px; }
+.node.level-3 .cn { font-size: 9px; max-width: 54px; }
+.node.level-3 .en { font-size: 7px; max-width: 54px; }
+
+.node.selected-node {
+  border-color: rgba(255,190,40,0.7) !important;
+  box-shadow: 0 0 28px rgba(255,180,30,0.3), 0 8px 32px rgba(0,0,0,0.4) !important;
+}
+.node.selected-node .cn { color: #ffe8a0; }
+
+/* Pulse animation for loading */
+.node.loading {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 16px rgba(100,150,255,0.2), 0 8px 32px rgba(0,0,0,0.4); }
+  50% { box-shadow: 0 0 40px rgba(100,150,255,0.5), 0 8px 32px rgba(0,0,0,0.4); }
+}
+
+/* New node spawn animation */
+.node.new-node {
+  animation: spawn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes spawn {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ===== Input Bar ===== */
+#inputWrap {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+}
+#conceptInput {
+  width: 400px;
+  padding: 14px 28px;
+  border-radius: 28px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(25, 28, 35, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  color: #d0d0d0;
+  font-size: 15px;
+  text-align: center;
+  outline: none;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  transition: all 0.3s;
+}
+#conceptInput:focus {
+  border-color: rgba(100,160,220,0.5);
+  box-shadow: 0 4px 32px rgba(100,150,220,0.15), 0 4px 24px rgba(0,0,0,0.3);
+}
+#conceptInput::placeholder { color: #555; }
+#inputHint {
+  font-size: 11px;
+  color: #444;
+  margin-top: 8px;
+  text-align: center;
+}
+
+/* ===== History Panel ===== */
+#historyPanel {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 30;
+  min-width: 180px;
+  max-width: 240px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(25, 28, 35, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+#historyPanel h3 {
+  font-size: 11px;
+  color: #555;
+  font-weight: 500;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+#historyList { list-style: none; max-height: 200px; overflow-y: auto; }
+#historyList li {
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#historyList li:hover { background: rgba(255,255,255,0.05); color: #b0b0b0; }
+#historyList li .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  flex-shrink: 0;
+}
+.history-actions { margin-top: 8px; display: flex; gap: 6px; }
+.history-actions button {
+  flex: 1;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: #666;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.history-actions button:hover { background: rgba(255,255,255,0.08); color: #999; }
+
+/* ===== API Key Panel ===== */
+#apiKeyPanel {
+  position: fixed;
+  top: 200px;
+  right: 20px;
+  z-index: 30;
+  min-width: 180px;
+  max-width: 240px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(25, 28, 35, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+.api-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.api-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.3s;
+}
+.api-status.disconnected .api-dot { background: #ff5252; box-shadow: 0 0 6px rgba(255,82,82,0.4); }
+.api-status.connected .api-dot { background: #76ff03; box-shadow: 0 0 6px rgba(118,255,3,0.4); }
+.api-status.checking .api-dot { background: #ffab00; box-shadow: 0 0 6px rgba(255,171,0,0.4); }
+.api-label {
+  font-size: 11px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+#apiKeyInputWrap {
+  display: flex;
+  gap: 6px;
+}
+#apiKeyInput {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(0,0,0,0.3);
+  color: #ccc;
+  font-size: 11px;
+  font-family: monospace;
+  outline: none;
+  min-width: 0;
+}
+#apiKeyInput:focus { border-color: rgba(100,160,220,0.5); }
+#apiKeyConnectBtn {
+  padding: 7px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(100,160,220,0.3);
+  background: rgba(100,160,220,0.15);
+  color: #a0c8f0;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+#apiKeyConnectBtn:hover { background: rgba(100,160,220,0.25); }
+#apiKeyConnectBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+#apiKeyMsg {
+  font-size: 10px;
+  margin-top: 8px;
+  min-height: 14px;
+  line-height: 1.4;
+}
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 20px;
+  border-radius: 8px;
+  background: rgba(30,40,30,0.8);
+  border: 1px solid rgba(100,180,100,0.3);
+  color: #8aba8a;
+  font-size: 12px;
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+#toast.show { opacity: 1; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- SVG connection layer -->
+<svg id="connectionSvg"></svg>
+
+<!-- Nodes container -->
+<div id="nodesContainer"></div>
+
+<!-- Back link (top-left) -->
+<a href="home.html" style="position:fixed;top:20px;left:20px;z-index:30;color:#6a8aaa;font-size:12px;text-decoration:none;padding:6px 14px;border-radius:16px;border:1px solid rgba(255,255,255,0.1);background:rgba(25,28,35,0.65);backdrop-filter:blur(12px);">← Home</a>
+
+<!-- History Panel (top-right) -->
+<div id="historyPanel">
+  <h3>History</h3>
+  <ul id="historyList"><li style="color:#555;">No history yet</li></ul>
+  <div class="history-actions">
+    <button id="clearHistoryBtn">Clear</button>
+  </div>
+</div>
+
+<!-- API Key Panel (below history) -->
+<div id="apiKeyPanel">
+  <div id="apiKeyStatus" class="api-status disconnected">
+    <span class="api-dot"></span>
+    <span class="api-label">DeepSeek</span>
+  </div>
+  <div id="apiKeyInputWrap">
+    <input id="apiKeyInput" type="password" placeholder="sk-xxxxxxxx">
+    <button id="apiKeyConnectBtn" onclick="verifyAndSaveKey()">Connect</button>
+  </div>
+  <div id="apiKeyMsg"></div>
+</div>
+
+<!-- Input bar -->
+<div id="inputWrap">
+  <input type="text" id="conceptInput" placeholder="输入概念词，按 Enter 创建节点...">
+  <div id="inputHint">Enter = 创建 · 点击节点 = 展开关联词 · 右键 = 选中/取消</div>
+</div>
+
+
+<!-- Toast -->
+<div id="toast">Copied!</div>
+
+<script>
+// ===== STATE =====
+const nodes = new Map();
+let nodeIdCounter = 0;
+let selectedNodeIds = new Set();
+const SERVER = 'http://localhost:3456';
+
+// ===== API KEY STATE =====
+let apiKeyConnected = false;
+
+// Check if API key is already configured on page load
+fetch(SERVER + '/api/health')
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok && data.hasKey) {
+      setApiKeyStatus('connected');
+      apiKeyConnected = true;
+      document.getElementById('apiKeyMsg').innerHTML = '<span style="color:#76ff03;">Connected</span>';
+    }
+  })
+  .catch(() => {});
+
+function setApiKeyStatus(status) {
+  const el = document.getElementById('apiKeyStatus');
+  el.className = 'api-status ' + status;
+}
+
+async function verifyAndSaveKey() {
+  const input = document.getElementById('apiKeyInput');
+  const msg = document.getElementById('apiKeyMsg');
+  const btn = document.getElementById('apiKeyConnectBtn');
+  const key = input.value.trim();
+
+  if (!key) {
+    msg.innerHTML = '<span style="color:#ff5252;">Enter your API key</span>';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '...';
+  setApiKeyStatus('checking');
+  msg.innerHTML = '<span style="color:#ffab00;">Verifying...</span>';
+
+  try {
+    const resp = await fetch(SERVER + '/api/verify-key', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key })
+    });
+    const result = await resp.json();
+
+    if (result.ok) {
+      setApiKeyStatus('connected');
+      apiKeyConnected = true;
+      msg.innerHTML = '<span style="color:#76ff03;">Connected!</span>';
+      btn.textContent = 'OK';
+    } else {
+      setApiKeyStatus('disconnected');
+      msg.innerHTML = '<span style="color:#ff5252;">' + (result.error || 'Invalid key') + '</span>';
+      btn.disabled = false;
+      btn.textContent = 'Connect';
+    }
+  } catch (e) {
+    setApiKeyStatus('disconnected');
+    msg.innerHTML = '<span style="color:#ff5252;">Server offline</span>';
+    btn.disabled = false;
+    btn.textContent = 'Connect';
+  }
+}
+
+const container = document.getElementById('nodesContainer');
+const svg = document.getElementById('connectionSvg');
+const W = () => window.innerWidth;
+const H = () => window.innerHeight;
+const CX = () => W() / 2;
+const CY = () => H() / 2;
+
+// ===== NODE DATA MODEL =====
+function createNode(cn, en, parentId, level) {
+  const id = 'n' + (++nodeIdCounter);
+  const node = {
+    id, cn, en, parentId, level: level || 0,
+    x: parentId ? 0 : CX(), y: parentId ? 0 : CY(),
+    selected: false, expanded: false, children: []
+  };
+  nodes.set(id, node);
+  if (parentId && nodes.has(parentId)) {
+    nodes.get(parentId).children.push(id);
+  }
+  return node;
+}
+
+// ===== RENDER =====
+function getNodeSizeClass(node) {
+  if (node.level === 0 || node.selected) return 'root-node';
+  if (node.level === 1) return 'level-1';
+  if (node.level === 2) return 'level-2';
+  return 'level-3';
+}
+
+function createNodeEl(node) {
+  const el = document.createElement('div');
+  el.className = 'node ' + getNodeSizeClass(node) + ' new-node';
+  el.id = 'node-' + node.id;
+  el.innerHTML = '<span class="cn">' + escHtml(node.cn) + '</span><span class="en">' + escHtml(node.en) + '</span>';
+  el.style.left = (node.x - 65) + 'px';
+  el.style.top = (node.y - 65) + 'px';
+
+  if (node.selected) el.classList.add('selected-node');
+
+  // Click → expand
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (node.expanded) return;
+    expandNode(node);
+  });
+
+  // Right-click → toggle selection
+  el.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleSelection(node);
+  });
+
+  return el;
+}
+
+function renderNode(node) {
+  // Remove old element if exists
+  const oldEl = document.getElementById('node-' + node.id);
+  if (oldEl) oldEl.remove();
+
+  const el = createNodeEl(node);
+  container.appendChild(el);
+
+  // Re-position
+  requestAnimationFrame(() => {
+    const size = getNodePixelSize(node);
+    el.style.left = (node.x - size / 2) + 'px';
+    el.style.top = (node.y - size / 2) + 'px';
+    el.classList.add('new-node');
+    el.addEventListener('animationend', () => el.classList.remove('new-node'), { once: true });
+  });
+}
+
+function getNodePixelSize(node) {
+  if (node.level === 0 || node.selected) return 130;
+  if (node.level === 1) return 100;
+  if (node.level === 2) return 84;
+  return 72;
+}
+
+function renderAllNodes() {
+  nodes.forEach(node => renderNode(node));
+  renderConnections();
+}
+
+function renderConnections() {
+  let html = '';
+  nodes.forEach(node => {
+    if (!node.parentId || !nodes.has(node.parentId)) return;
+    const parent = nodes.get(node.parentId);
+    const isSelectedConn = node.selected || parent.selected;
+    const cls = isSelectedConn ? 'connection-line selected-line' : 'connection-line';
+
+    const sx = parent.x, sy = parent.y;
+    const ex = node.x, ey = node.y;
+    const mx = (sx + ex) / 2, my = (sy + ey) / 2 - 20;
+
+    html += '<path d="M' + sx + ',' + sy + ' Q' + mx + ',' + my + ' ' + ex + ',' + ey + '" class="' + cls + '"/>';
+  });
+  svg.innerHTML = html;
+}
+
+function updateNodePosition(node) {
+  const el = document.getElementById('node-' + node.id);
+  if (!el) return;
+  const size = getNodePixelSize(node);
+  el.style.left = (node.x - size / 2) + 'px';
+  el.style.top = (node.y - size / 2) + 'px';
+  el.className = 'node ' + getNodeSizeClass(node);
+  if (node.selected) el.classList.add('selected-node');
+}
+
+function repositionAll() {
+  nodes.forEach(node => updateNodePosition(node));
+  renderConnections();
+}
+
+// ===== LAYOUT =====
+function radialLayout(parentNode, count) {
+  const level = parentNode.level + 1;
+  const radius = 130 + level * 25;          // radius increases with level
+  const angleSpan = parentNode.level === 0 ? 360 : 200;  // full circle for root, arc for deeper
+
+  // Base angle: for non-root parents, point away from center
+  let baseAngle = 0;
+  if (parentNode.level > 0) {
+    const dx = parentNode.x - CX();
+    const dy = parentNode.y - CY();
+    baseAngle = (Math.atan2(dy, dx) * 180 / Math.PI) - angleSpan / 2;
+  }
+
+  const positions = [];
+  for (let i = 0; i < count; i++) {
+    const angle = (baseAngle + (angleSpan * i / Math.max(count - 1, 1))) * Math.PI / 180;
+    let x = parentNode.x + radius * Math.cos(angle);
+    let y = parentNode.y + radius * Math.sin(angle);
+
+    // Collision avoidance: check against all existing nodes
+    let attempts = 0;
+    let adjusted = false;
+    while (attempts < 20) {
+      let collision = false;
+      nodes.forEach(existing => {
+        const dist = Math.hypot(x - existing.x, y - existing.y);
+        if (dist < 65) { collision = true; }
+      });
+      if (!collision) break;
+      // Nudge angle slightly
+      const nudgedAngle = (angle * 180 / Math.PI) + (Math.random() - 0.5) * 30;
+      x = parentNode.x + (radius + attempts * 8) * Math.cos(nudgedAngle * Math.PI / 180);
+      y = parentNode.y + (radius + attempts * 8) * Math.sin(nudgedAngle * Math.PI / 180);
+      attempts++;
+      adjusted = true;
+    }
+
+    positions.push({ x: Math.round(x), y: Math.round(y) });
+  }
+  return positions;
+}
+
+// ===== DeepSeek API (via local server) =====
+async function generateRelatedWords(node) {
+  const resp = await fetch(SERVER + '/api/expand-concept', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cn: node.cn, en: node.en })
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error || 'Server error ' + resp.status);
+  }
+  const data = await resp.json();
+  return data.words;
+}
+
+// ===== EXPAND =====
+async function expandNode(node) {
+  if (node.expanded) return;
+
+  // Check API key connection
+  if (!apiKeyConnected) {
+    showToast('⚠ Please connect your API key first');
+    document.getElementById('apiKeyPanel').style.animation = 'pulse 0.6s ease-out';
+    setTimeout(() => {
+      document.getElementById('apiKeyPanel').style.animation = '';
+    }, 600);
+    return;
+  }
+
+  // Show loading state
+  const el = document.getElementById('node-' + node.id);
+  if (el) el.classList.add('loading');
+
+  try {
+    const words = await generateRelatedWords(node);
+    if (!Array.isArray(words) || words.length === 0) throw new Error('No words returned');
+
+    const positions = radialLayout(node, words.length);
+
+    words.forEach((w, i) => {
+      const child = createNode(w.cn, w.en, node.id, node.level + 1);
+      child.x = positions[i].x;
+      child.y = positions[i].y;
+      renderNode(child);
+    });
+
+    node.expanded = true;
+    renderConnections();
+    addToHistory(node);
+  } catch (err) {
+    console.error('Expand error:', err);
+    showToast('⚠ ' + err.message);
+  } finally {
+    if (el) el.classList.remove('loading');
+  }
+}
+
+// ===== SELECTION =====
+function toggleSelection(node) {
+  node.selected = !node.selected;
+  const el = document.getElementById('node-' + node.id);
+
+  if (node.selected) {
+    selectedNodeIds.add(node.id);
+    if (el) el.classList.add('selected-node');
+  } else {
+    selectedNodeIds.delete(node.id);
+    if (el) el.classList.remove('selected-node');
+  }
+
+  // Update size class (selected nodes are larger)
+  if (el) {
+    el.className = 'node ' + getNodeSizeClass(node);
+    if (node.selected) el.classList.add('selected-node');
+    updateNodePosition(node);
+  }
+  renderConnections();
+}
+
+// ===== INPUT HANDLER =====
+const input = document.getElementById('conceptInput');
+input.addEventListener('keydown', async (e) => {
+  if (e.key !== 'Enter') return;
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  // Detect if Chinese or English
+  const hasChinese = /[一-鿿]/.test(text);
+  let cn, en;
+  if (hasChinese) {
+    cn = text;
+    en = text; // Will be improved by translation if we had it; for now use same
+  } else {
+    cn = text;
+    en = text;
+  }
+
+  // If there are selected nodes, connect new node to them
+  if (selectedNodeIds.size > 0) {
+    // New node positioned at center, multiple parents = selected nodes
+    const newNode = createNode(cn, en, null, 1);
+    newNode.x = CX();
+    newNode.y = CY();
+    renderNode(newNode);
+
+    // Connect to all selected nodes (draw connections from each selected to new)
+    selectedNodeIds.forEach(sid => {
+      const selNode = nodes.get(sid);
+      if (selNode) {
+        // Create a reverse connection by making selected nodes children of the new node
+        // Or simply draw a connection
+        selNode.children.push(newNode.id);
+        // Temporary connection visualization
+        const tempConn = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        tempConn.setAttribute('d', 'M' + selNode.x + ',' + selNode.y + ' L' + newNode.x + ',' + newNode.y);
+        tempConn.setAttribute('class', 'connection-line selected-line');
+      }
+    });
+    renderConnections();
+    addToHistory(newNode);
+  } else {
+    // Default: root node at center
+    const node = createNode(cn, en, null, 0);
+    node.x = CX();
+    node.y = CY();
+    renderNode(node);
+    addToHistory(node);
+  }
+});
+
+// ===== HISTORY =====
+function loadHistory() {
+  try {
+    return JSON.parse(localStorage.getItem('concept_map_history') || '[]');
+  } catch (e) { return []; }
+}
+
+function saveHistory(history) {
+  localStorage.setItem('concept_map_history', JSON.stringify(history.slice(0, 30)));
+}
+
+function addToHistory(node) {
+  if (node.level !== 0) return; // Only track root nodes
+  const history = loadHistory().filter(h => h.cn !== node.cn);
+  history.unshift({ cn: node.cn, en: node.en, time: Date.now() });
+  saveHistory(history);
+  renderHistoryPanel();
+}
+
+function renderHistoryPanel() {
+  const history = loadHistory();
+  const list = document.getElementById('historyList');
+  if (history.length === 0) {
+    list.innerHTML = '<li style="color:#555;">No history yet</li>';
+    return;
+  }
+  list.innerHTML = history.slice(0, 15).map(h =>
+    '<li onclick="loadFromHistory(\'' + escAttr(h.cn) + '\', \'' + escAttr(h.en) + '\')">' +
+    '<span class="dot"></span>' + escHtml(h.cn) +
+    '</li>'
+  ).join('');
+}
+
+function loadFromHistory(cn, en) {
+  // Clear existing
+  clearAll();
+  // Create new root
+  const node = createNode(cn, en, null, 0);
+  node.x = CX();
+  node.y = CY();
+  renderNode(node);
+}
+
+function clearAll() {
+  nodes.clear();
+  selectedNodeIds.clear();
+  nodeIdCounter = 0;
+  container.innerHTML = '';
+  svg.innerHTML = '';
+}
+
+document.getElementById('clearHistoryBtn').addEventListener('click', () => {
+  localStorage.removeItem('concept_map_history');
+  renderHistoryPanel();
+  showToast('History cleared');
+});
+
+// ===== TOAST =====
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toast._timeout);
+  toast._timeout = setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+// ===== UTILS =====
+function escHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escAttr(s) {
+  return (s || '').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+}
+
+// Background click to deselect all
+document.body.addEventListener('click', (e) => {
+  if (e.target.closest('.node') || e.target.closest('#inputWrap') ||
+      e.target.closest('#historyPanel')) return;
+  selectedNodeIds.forEach(id => {
+    const node = nodes.get(id);
+    if (node) {
+      node.selected = false;
+      const el = document.getElementById('node-' + id);
+      if (el) { el.classList.remove('selected-node'); el.className = 'node ' + getNodeSizeClass(node); }
+    }
+  });
+  selectedNodeIds.clear();
+  renderConnections();
+});
+
+// Handle window resize
+window.addEventListener('resize', () => {
+  nodes.forEach(node => {
+    if (node.level === 0 && node.parentId === null && node.children.length === 0) {
+      node.x = CX();
+      node.y = CY();
+    }
+  });
+  repositionAll();
+});
+
+// ===== INIT =====
+renderHistoryPanel();
+</script>
+</body>
+</html>

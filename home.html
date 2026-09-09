@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Home</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #050508;
+  height: 100vh; width: 100vw;
+  overflow: hidden;
+  font-family: 'Press Start 2P', monospace;
+  cursor: crosshair;
+}
+
+canvas { display: block; position: fixed; top: 0; left: 0; z-index: 0; }
+
+/* Tagline */
+#tagline {
+  position: fixed; top: 10%; left: 8%;
+  z-index: 2; pointer-events: none;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px; color: rgba(255,255,255,0.18);
+  letter-spacing: 4px;
+}
+
+/* Instruction hint */
+#hint {
+  position: fixed; bottom: 20%; left: 8%;
+  z-index: 2; pointer-events: none;
+  font-size: 9px; color: rgba(255,255,255,0.1);
+  letter-spacing: 2px;
+}
+
+/* Cards */
+#cardsWrap {
+  position: fixed; bottom: 52px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 12px;
+  z-index: 5;
+}
+.card {
+  padding: 10px 24px;
+  border-radius: 32px;
+  background: rgba(18, 20, 28, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.05);
+  cursor: pointer;
+  text-decoration: none;
+  color: #777;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  white-space: nowrap;
+  transition: all 0.35s cubic-bezier(0.25,0.1,0.25,1);
+}
+.card:hover {
+  border-color: rgba(255,255,255,0.18);
+  color: #bbb;
+  background: rgba(24, 28, 38, 0.65);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  transform: translateY(-2px);
+}
+.card .arrow { display: inline-block; margin-left: 4px; transition: transform 0.25s; }
+.card:hover .arrow { transform: translateX(3px); }
+
+#flash {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: white; z-index: 100; opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+}
+#flash.active { opacity: 1; }
+
+@media (max-width: 700px) {
+  #cardsWrap { bottom: 28px; gap: 8px; }
+  .card { padding: 8px 18px; font-size: 9px; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+<div id="tagline">SPATIAL DESIGN AI TOOLS</div>
+<div id="hint">click anywhere &nbsp;·&nbsp; change quote</div>
+<div id="flash"></div>
+
+<div id="cardsWrap">
+  <a class="card" href="index.html" onclick="return nav(event,this)">Prompt Studio<span class="arrow">→</span></a>
+  <a class="card" href="concept-map.html" onclick="return nav(event,this)">Concept Map<span class="arrow">→</span></a>
+</div>
+
+<script>
+// ===== QUOTES =====
+const quotes = [
+  { text: 'Less is more.', author: 'Mies van der Rohe', color: '#00e5ff' },
+  { text: 'Form follows\nfunction.', author: 'Louis Sullivan', color: '#ff6d00' },
+  { text: 'God is in\nthe details.', author: 'Mies van der Rohe', color: '#ffea00' },
+  { text: 'Simplicity is\nthe ultimate\nsophistication.', author: 'Leonardo da Vinci', color: '#76ff03' },
+  { text: 'Less is\na bore.', author: 'Robert Venturi', color: '#ff1744' },
+  { text: 'Design is\nhow it works.', author: 'Steve Jobs', color: '#00b0ff' },
+  { text: 'Space\nis the breath\nof art.', author: 'Frank Lloyd Wright', color: '#d500f9' },
+];
+let qi = 0, quoteAlpha = 0, targetQuote = 0;
+let nextQuoteTimer = null;
+
+// ===== CANVAS SETUP =====
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ===== BACKGROUND: LINE ART ELEMENTS =====
+const lineArt = [];
+
+// Generate architectural line-art elements
+function createWireframeCube(cx, cy, size, rot) {
+  const s = size, r = rot * Math.PI / 180;
+  const cos = Math.cos(r), sin = Math.sin(r);
+  const pts = [
+    [-s,-s], [s,-s], [s,s], [-s,s],
+    [-s+12,-s-12], [s+12,-s-12], [s+12,s-12], [-s+12,s-12]
+  ].map(([x,y]) => [cx + x*cos - y*sin, cy + x*sin + y*cos]);
+  return { type:'wireframe', pts, opacity: 0.12 + Math.random() * 0.1 };
+}
+
+function createArch(cx, cy, w, h) {
+  return { type:'arch', cx, cy, w, h, opacity: 0.1 + Math.random() * 0.08 };
+}
+
+function createPerspectiveGrid(cx, cy, count, spread) {
+  const lines = [];
+  for (let i = 0; i < count; i++) {
+    const t = i / (count - 1);
+    const x = cx + (t - 0.5) * spread;
+    lines.push({ x1: x, y1: cy - 60, x2: cx + (t - 0.5) * 30, y2: cy - 300 });
+  }
+  return { type:'grid', lines, opacity: 0.08 };
+}
+
+function createFloorPlan(cx, cy, size) {
+  const s = size;
+  const walls = [
+    [cx-s, cy-s, cx+s, cy-s], [cx+s, cy-s, cx+s, cy+s],
+    [cx+s, cy+s, cx-s, cy+s], [cx-s, cy+s, cx-s, cy-s],
+    [cx-s/2, cy, cx+s/2, cy], [cx, cy-s/2, cx, cy+s/2],
+  ];
+  return { type:'floorplan', walls, opacity: 0.1 + Math.random() * 0.06 };
+}
+
+function createColumn(cx, cy, h) {
+  return { type:'column', cx, cy, h, w: 6 + Math.random() * 8, opacity: 0.12 };
+}
+
+function createCrossHatch(cx, cy, w, h, angle) {
+  return { type:'hatch', cx, cy, w, h, angle: angle || 45, spacing: 4 + Math.random() * 6, opacity: 0.04 };
+}
+
+// Populate line art
+for (let i = 0; i < 5; i++) {
+  lineArt.push(createWireframeCube(
+    100 + Math.random() * (W - 200), 100 + Math.random() * (H - 200),
+    40 + Math.random() * 80, Math.random() * 360
+  ));
+}
+for (let i = 0; i < 4; i++) {
+  lineArt.push(createArch(
+    120 + Math.random() * (W - 240), 120 + Math.random() * (H - 300),
+    40 + Math.random() * 80, 60 + Math.random() * 120
+  ));
+}
+for (let i = 0; i < 3; i++) {
+  lineArt.push(createPerspectiveGrid(
+    W / 2 + (Math.random() - 0.5) * 400, H / 2 + (Math.random() - 0.5) * 300,
+    12 + Math.floor(Math.random() * 16), 200 + Math.random() * 400
+  ));
+}
+for (let i = 0; i < 4; i++) {
+  lineArt.push(createFloorPlan(
+    150 + Math.random() * (W - 300), 150 + Math.random() * (H - 300),
+    60 + Math.random() * 100
+  ));
+}
+for (let i = 0; i < 6; i++) {
+  lineArt.push(createColumn(
+    80 + Math.random() * (W - 160), 80 + Math.random() * (H - 200),
+    100 + Math.random() * 180
+  ));
+}
+for (let i = 0; i < 3; i++) {
+  lineArt.push(createCrossHatch(
+    100 + Math.random() * (W - 200), 100 + Math.random() * (H - 200),
+    50 + Math.random() * 100, 50 + Math.random() * 100
+  ));
+}
+
+function drawLineArt(ctx, t) {
+  for (const el of lineArt) {
+    ctx.strokeStyle = `rgba(255,255,255,${el.opacity})`;
+    ctx.lineWidth = 0.6;
+
+    if (el.type === 'wireframe') {
+      // Front face
+      ctx.beginPath();
+      for (let i = 0; i < 4; i++) {
+        const [x, y] = el.pts[i];
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.closePath(); ctx.stroke();
+      // Back face
+      ctx.beginPath();
+      for (let i = 4; i < 8; i++) {
+        const [x, y] = el.pts[i];
+        i === 4 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.closePath(); ctx.stroke();
+      // Connecting lines
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.moveTo(el.pts[i][0], el.pts[i][1]);
+        ctx.lineTo(el.pts[i + 4][0], el.pts[i + 4][1]);
+        ctx.stroke();
+      }
+    } else if (el.type === 'arch') {
+      ctx.beginPath();
+      ctx.moveTo(el.cx - el.w / 2, el.cy);
+      ctx.lineTo(el.cx - el.w / 2, el.cy - el.h / 2);
+      ctx.arc(el.cx, el.cy - el.h / 2, el.w / 2, Math.PI, 0);
+      ctx.lineTo(el.cx + el.w / 2, el.cy);
+      ctx.stroke();
+    } else if (el.type === 'grid') {
+      for (const l of el.lines) {
+        ctx.beginPath();
+        ctx.moveTo(l.x1, l.y1);
+        ctx.lineTo(l.x2, l.y2);
+        ctx.stroke();
+      }
+    } else if (el.type === 'floorplan') {
+      ctx.lineWidth = 0.8;
+      for (const w of el.walls) {
+        ctx.beginPath();
+        ctx.moveTo(w[0], w[1]);
+        ctx.lineTo(w[2], w[3]);
+        ctx.stroke();
+      }
+      ctx.lineWidth = 0.6;
+    } else if (el.type === 'column') {
+      ctx.beginPath();
+      ctx.moveTo(el.cx - el.w / 2, el.cy);
+      ctx.lineTo(el.cx - el.w / 2, el.cy - el.h);
+      ctx.lineTo(el.cx + el.w / 2, el.cy - el.h);
+      ctx.lineTo(el.cx + el.w / 2, el.cy);
+      ctx.stroke();
+    } else if (el.type === 'hatch') {
+      const rad = el.angle * Math.PI / 180;
+      ctx.lineWidth = 0.3;
+      for (let d = -el.w; d < el.w; d += el.spacing) {
+        ctx.beginPath();
+        const sx = el.cx - el.w / 2 + d * Math.cos(-rad);
+        const sy = el.cy - el.h / 2;
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(sx + el.h * Math.cos(rad), sy + el.h * Math.sin(rad));
+        ctx.stroke();
+      }
+      ctx.lineWidth = 0.6;
+    }
+  }
+}
+
+// ===== DOT-MATRIX TEXT RENDERING =====
+function renderDotText(text, color) {
+  // Offscreen canvas to sample pixel font
+  const off = document.createElement('canvas');
+  const maxW = W * 0.82, maxH = H * 0.45;
+  off.width = maxW; off.height = maxH;
+  const octx = off.getContext('2d');
+
+  // Calculate font size to fit
+  const lines = text.split('\n');
+  const fontSize = Math.min(72, Math.floor(maxW / (Math.max(...lines.map(l => l.length)) * 0.55)));
+  const lineHeight = fontSize * 1.5;
+  const totalH = lines.length * lineHeight;
+  const startY = Math.max(0, (maxH - totalH) / 2);
+
+  octx.font = `${fontSize}px "Press Start 2P", monospace`;
+  octx.fillStyle = 'white';
+  octx.textBaseline = 'top';
+
+  for (let i = 0; i < lines.length; i++) {
+    octx.fillText(lines[i], 0, startY + i * lineHeight);
+  }
+
+  const imageData = octx.getImageData(0, 0, maxW, maxH);
+  const pixels = imageData.data;
+
+  // Draw dots
+  const dotSize = 5, gap = 3, step = dotSize + gap;
+  const dots = [];
+
+  for (let py = 0; py < maxH; py += step) {
+    for (let px = 0; px < maxW; px += step) {
+      // Sample center of dot area
+      let alpha = 0, count = 0;
+      for (let dy = 0; dy < dotSize && py + dy < maxH; dy++) {
+        for (let dx = 0; dx < dotSize && px + dx < maxW; dx++) {
+          const idx = ((py + dy) * maxW + (px + dx)) * 4;
+          alpha += pixels[idx + 3];
+          count++;
+        }
+      }
+      if (alpha / count > 40) { // threshold — lower = more dots
+        // Randomize slightly for organic feel
+        const jx = (Math.random() - 0.5) * 1.5;
+        const jy = (Math.random() - 0.5) * 1.5;
+        dots.push({ x: px + jx, y: py + jy, r: dotSize / 2, alpha: Math.min(1, alpha / count / 255) });
+      }
+    }
+  }
+  return dots;
+}
+
+let currentDots = [];
+let currentColor = quotes[0].color;
+let dotsAlpha = 0;
+let dotsCache = new Map(); // Cache rendered dots per quote
+
+function getDots(qi) {
+  if (!dotsCache.has(qi)) {
+    dotsCache.set(qi, renderDotText(quotes[qi].text, quotes[qi].color));
+  }
+  return dotsCache.get(qi);
+}
+
+// ===== MOUSE =====
+let mx = W / 2, my = H / 2, tmx = mx, tmy = my;
+document.addEventListener('mousemove', e => { tmx = e.clientX; tmy = e.clientY; });
+
+// ===== MAIN DRAW LOOP =====
+const textX = () => W * 0.09;
+const textY = () => H * 0.25;
+
+function draw(timestamp) {
+  ctx.clearRect(0, 0, W, H);
+
+  // Smooth mouse
+  mx += (tmx - mx) * 0.04;
+  my += (tmy - my) * 0.04;
+
+  // Draw background line art
+  drawLineArt(ctx, timestamp);
+
+  // Subtle vignette
+  const vignette = ctx.createRadialGradient(W / 2, H / 2, W * 0.4, W / 2, H / 2, W * 0.8);
+  vignette.addColorStop(0, 'transparent');
+  vignette.addColorStop(1, 'rgba(5,5,8,0.5)');
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, W, H);
+
+  // Transition dots alpha
+  const targetAlpha = quoteAlpha;
+  dotsAlpha += (targetAlpha - dotsAlpha) * 0.08;
+
+  // Draw dot-matrix text with mouse parallax
+  if (dotsAlpha > 0.005) {
+    const px = (mx / W - 0.5) * 14;
+    const py = (my / H - 0.5) * 10;
+    const dots = getDots(qi);
+    const dotColor = currentColor;
+
+    for (const d of dots) {
+      const sx = textX() + d.x + px;
+      const sy = textY() + d.y + py;
+      if (sx < -10 || sx > W + 10 || sy < -10 || sy > H + 10) continue;
+
+      ctx.fillStyle = dotColor;
+      ctx.globalAlpha = d.alpha * dotsAlpha * (0.85 + 0.15 * Math.random());
+      ctx.beginPath();
+      ctx.arc(sx, sy, d.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Author label
+  if (dotsAlpha > 0.3) {
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = '11px "Press Start 2P", monospace';
+    ctx.globalAlpha = dotsAlpha * 0.85;
+    ctx.fillText(quotes[qi].author, textX(), textY() + H * 0.38);
+    ctx.globalAlpha = 1;
+  }
+
+  requestAnimationFrame(draw);
+}
+
+// ===== QUOTE CYCLING =====
+function switchQuote(idx) {
+  qi = idx;
+  currentColor = quotes[qi].color;
+  quoteAlpha = 0;
+  dotsAlpha = 0;
+
+  // Pre-render if not cached
+  getDots(qi);
+
+  // Fade in
+  setTimeout(() => { quoteAlpha = 1; }, 100);
+
+  // Schedule next
+  clearTimeout(nextQuoteTimer);
+  nextQuoteTimer = setTimeout(() => {
+    switchQuote((qi + 1) % quotes.length);
+  }, 10000);
+}
+
+// Click to cycle
+document.addEventListener('click', e => {
+  if (e.target.closest('.card')) return;
+  switchQuote((qi + 1) % quotes.length);
+});
+
+// ===== NAVIGATION =====
+function nav(e, card) {
+  e.preventDefault();
+  const url = card.getAttribute('href');
+  card.style.transition = 'all 0.4s cubic-bezier(0.4,0,0.2,1)';
+  card.style.transform = 'scale(1.06)';
+  card.style.opacity = '0';
+  document.querySelectorAll('.card').forEach(c => {
+    if (c !== card) c.style.opacity = '0';
+  });
+  document.getElementById('flash').classList.add('active');
+  setTimeout(() => { window.location.href = url; }, 450);
+  return false;
+}
+
+// ===== INIT =====
+switchQuote(0);
+requestAnimationFrame(draw);
+
+// Resize = re-render all cached dots
+window.addEventListener('resize', () => {
+  resize();
+  dotsCache.clear();
+  getDots(qi);
+});
+</script>
+</body>
+</html>
