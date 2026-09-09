@@ -1,0 +1,11 @@
+{
+  "name": "happy-oyster",
+  "version": "1.0.0",
+  "description": "Happy Oyster — AI Scene Prompt Manager",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "license": "MIT",
+  "dependencies": {
+    "playwright": "^1.48.0"
+  }
+}
